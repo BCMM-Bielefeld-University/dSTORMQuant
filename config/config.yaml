@@ -1,0 +1,175 @@
+# dSTORMQuant Configuration
+# -----------------------------------
+# This file contains all the parameters for running the SMLM (Single Molecule Localization Microscopy) analysis pipeline.
+# Each section is documented to help you understand and modify the configuration as needed for your experiments.
+
+# -----------------------------
+# Data input/output parameters
+# -----------------------------
+data:
+  input:
+    file_format: "csv"  # Format of input files. Options: csv
+    # Columns that needs to be present on csv file.
+    required_columns:
+      - "x (nm)"
+      - "y (nm)"
+      - "channelIndex"
+      - "frameIndex"
+    xlsx_filename: "dSTORM Data_Input.xlsx"  # Metadata Excel file in data/metadata/
+    skip_frames: 200  # Number of frames to skip at the start of each channel's frame range
+
+    # Column names in the metadata Excel
+    required_metadata_columns:
+      file_name: "file_name"
+      first_channel_index: "first_channel_index"
+      first_ch_frame_last: "first_ch_frame_last"
+      second_channel_index: "second_channel_index"
+      second_ch_frame_last: "second_ch_frame_last"
+    # Optional metadata — Excel columns may be absent; map only keys you use.
+    optional_metadata_columns:
+      experiment_number: "experiment_number"
+      initials: "initials"
+      tag: "tag"
+      first_channel_label: "first_channel_label"
+      second_channel_label: "second_channel_label"
+
+
+# -----------------------------
+# Channel configuration
+# -----------------------------
+# Colors are used for plots and visualizations (hex codes).
+channels:
+  Ch1:
+    color: "#FF00FF"  # Color for Channel 1 (hex code, e.g., magenta)
+  Ch2:
+    color: "#00FFFF"  # Color for Channel 2 (hex code, e.g., cyan)
+
+# -----------------------------
+# Visualization (Napari screenshots on/off)
+# -----------------------------
+visualization:
+  use_napari: true   # false: skip Napari point/cluster screenshots
+
+# -----------------------------
+# Filtering parameters
+# -----------------------------
+filtering:
+  sigma:
+    min_value: 50.0           # Minimum allowed sigma (nm) for spot width
+    max_value: 250.0          # Maximum allowed sigma (nm) for spot width
+  intensity:
+    min_value: 300.0          # Minimum photon count
+  localization_precision:
+    threshold_value: 20.0     # Maximum allowed localization precision (nm)
+  p_value:
+    threshold_value: 0.1      # Maximum allowed p-value
+
+
+# -----------------------------
+# Drift correction parameters
+# -----------------------------
+drift_correction:
+  pixel_size: 117              # Pixel size in nm
+  segmentation: 100            # Default number of segments
+  intersect_d_nm: 20           # Intersection distance in nanometers
+  roi_r_nm: 60                 # ROI radius in nanometers
+
+  # Drift validation and replacement parameters
+  drift_validation:
+    use: false                        # Enable detection and replacement of unrealistic drift values
+    max_segment_drift_nm: 35.0          # Maximum allowed drift per segment in nanometers
+    n_previous_segments: 10             # Number of previous valid segments to average for replacement
+
+  # Sanity check filters applied after drift correction
+  sanity_checks:
+    filter_boundary: true          # Remove localizations with x<=0 or y<=0
+    filter_parameters: true        # Remove localizations with sx<=0, sy<=0, or lp<=0
+
+# -----------------------------
+# Temporal grouping
+# -----------------------------
+temporal_grouping:
+  use: true                     # Set false to skip temporal grouping
+  max_frame_gap: 2              # Max allowed frame difference between localizations in a group
+  max_distance_nm: 50           # Max allowed spatial distance in nanometers
+  min_duration: 1               # Minimum allowed duration for a group (frames)
+  max_duration: 50              # Maximum allowed duration for a group (frames)
+
+
+# -----------------------------
+# Cell detection parameter
+# -----------------------------
+cell_detection:
+  use: true  # Set to true to enable cell detection
+  approach: "grid"   # Options: "grid" and "vornoi"
+  grid:
+    grid_size: 100                # Number of bins for cell detection grid (higher = finer grid)
+    high_density_threshold: 3   # Minimum count for a bin to be considered high-density (used to detect cells)
+  vornoi:
+    percentile: 99.0      # Percentile to clip extreme Voronoi areas before thresholding (default 99.0) (value between 1.0 to 100.0).
+
+
+# ----------------------------------
+# Nearest Neighbor Analysis parameters
+# ----------------------------------
+nearest_neighbor_analysis:
+  use: true  # Set to false to disable this analysis
+  radius: 100  # Radius (nm) for mean distance within radius
+  k: 1  # Number of nearest neighbors
+  algorithm: "auto"  # 'auto', 'ball_tree', 'kd_tree', 'brute'
+  metric: "euclidean"  # Distance metric
+
+# ----------------------------------
+# Clustering parameters
+# ----------------------------------
+clustering:
+  use: true  # Set to false to disable this analysis
+  use_cluster_knn: true  # Set to false to skip kNN analysis on cluster centers
+  ch1:
+    use: true   # Set false to skip clustering for channel 1 only
+    method: "dbscan"  # Options: "dbscan", "hdbscan", "finder"
+    # Method-specific parameters
+    dbscan:
+      eps: 100  # Maximum distance between two samples to be considered in the same cluster (in nm)
+      min_samples: 10  # Minimum number of samples in a neighborhood to form a core point
+    hdbscan:
+      min_cluster_size: 10  # Minimum size of clusters
+      min_samples: 10  # Number of samples in a neighborhood for a point to be considered a core point
+    finder:
+      threshold: 10  # Default minPts
+      points_per_dimension: 15  # Grid resolution for parameter search
+      algorithm: "dbscan"  # "dbscan" or "DbscanLoop"
+      min_threshold: 5  # Minimum threshold to search
+      max_threshold: 21  # Maximum threshold to search
+      decay: 0.5  # Decay for selecting optimal parameters
+
+  ch2:
+    use: true   # Set false to skip clustering for channel 2 only
+    method: "dbscan"  # Options: "dbscan", "hdbscan", "finder"
+    # Method-specific parameters
+    dbscan:
+      eps: 100  # Maximum distance between two samples to be considered in the same cluster (in nm)
+      min_samples: 10  # Minimum number of samples in a neighborhood to form a core point
+    hdbscan:
+      min_cluster_size: 10  # Minimum size of clusters
+      min_samples: 10  # Number of samples in a neighborhood for a point to be considered a core point
+    finder:  # Used when method is "finder"
+      threshold: 10  # Default minPts; FINDER searches for optimal in [min_threshold, max_threshold]
+      points_per_dimension: 15  # Grid resolution for parameter search
+      algorithm: "dbscan"  # "dbscan" or "DbscanLoop"
+      min_threshold: 5  # Minimum threshold to search
+      max_threshold: 21  # Maximum threshold to search
+      decay: 0.5  # Decay for selecting optimal parameters
+
+# -----------------------------
+# Co-localization analysis parameters
+# -----------------------------
+colocalization:
+  use: true   # Set to false to skip all co-localization analyses
+
+  # -------------------------
+  # Coordinate-Based Co-localization (CBC) method
+  # -------------------------
+  cbc:
+    radius: 100              # Radius (nm) for CBC calculation
+    n_steps: 10              # Number of steps for CBC computation

@@ -1,0 +1,5 @@
+# Install before: pip install -e . --no-build-isolation
+setuptools>=61.0
+wheel
+pybind11>=2.6.0
+numpy

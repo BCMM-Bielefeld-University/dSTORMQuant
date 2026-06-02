@@ -180,7 +180,7 @@ Download `examples.zip` and place the contents in `data/input/` and `data/metada
 
 **Download URL:**
 
-[https://example.com/dSTORMQuant/examples.zip](https://example.com/dSTORMQuant/examples.zip)
+[https://github.com/BCMM-Bielefeld-University/dSTORMQuant/releases/download/v1.0.0/examples.zip](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/releases/download/v1.0.0/examples.zip)
 
 
 | File                                                            | Put in           | Description                           |

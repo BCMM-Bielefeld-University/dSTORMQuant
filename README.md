@@ -28,13 +28,13 @@ dSTORMQuant is a comprehensive, modular Python tool for processing, filtering, d
 - Python 3.10+
 - C++ compiler (for FINDER algorithm compilation)
 - `pip` (Python package manager)
-- **Demo data:** ~400 MB disk space to download and extract `examples.zip` ([§3 Demo](#3-demo)); not shipped in the Git repo
+- **Demo data:** [https://github.com/BCMM-Bielefeld-University/dSTORMQuant/releases/download/v0.0.1/examples.zip](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/releases/download/v0.0.1/examples.zip)
 
 ### Setup Steps
 
 1. **Clone the repository and go to the project root**
   ```bash
-   git clone https://github.com/surajkarki66/dSTORMQuant.git
+   git clone https://github.com/BCMM-Bielefeld-University/dSTORMQuant.git
    cd dSTORMQuant
   ```
    If you already have a local copy, navigate there instead:
@@ -180,24 +180,24 @@ Download `examples.zip` and place the contents in `data/input/` and `data/metada
 
 **Download URL:**
 
-[https://github.com/BCMM-Bielefeld-University/dSTORMQuant/releases/download/v1.0.0/examples.zip](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/releases/download/v1.0.0/examples.zip)
+[https://github.com/BCMM-Bielefeld-University/dSTORMQuant/releases/download/v0.0.1/examples.zip](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/releases/download/v0.0.1/examples.zip)
 
 
-| File                                                            | Put in           | Description                           |
-| --------------------------------------------------------------- | ---------------- | ------------------------------------- |
-| `BN_24062_U2OS-WT_PST3252_AST0063_posXY2_channels_t0_posZ0.csv` | `data/input/`    | Dual-channel U2OS WT (~265 MB, NimOS) |
-| `COS7_Tubulin_AF647_nstorm.csv`                                 | `data/input/`    | Single-channel COS7 tubulin (~102 MB) |
-| `Slp76_259722AM_Slp76_PLL_5min_Cell-2_detections_dc.csv`        | `data/input/`    | Single-channel Jurkat Slp76 (~3.5 MB) |
-| `dSTORM Data_Input.xlsx`                                        | `data/metadata/` | Metadata for all three experiments    |
+| File                                                               | Put in           | Description                                                                                                                                                       |
+| ------------------------------------------------------------------ | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AHA_24022_U2OS-WT_AST0126_AST0063-2_posXY1_channels_t0_posZ0.csv` | `data/input/`    | Dual-channel U2OS WT data (NimOS). Acquired by Anne Sophie Hammann, Biochemistry and Molecular Medicine, Medical School OWL, Bielefeld University.                |
+| `COS7_Tubulin_AF647_nstorm.csv`                                    | `data/input/`    | Single-channel COS7 tubulin ([dataset 233](https://nano-org.bham.ac.uk/upload/dataset/233/)). ThunderSTORM; Dr. Sandeep Shirgrill, University of Birmingham.      |
+| `Slp76_259722AM_Slp76_PLL_5min_Cell-2_detections_dc.csv`           | `data/input/`    | Single-channel Jurkat E6.1 Slp76 ([dataset 276](https://nano-org.bham.ac.uk/upload/dataset/276/)). ThunderSTORM; Dr. Sandeep Shirgrill, University of Birmingham. |
+| `dSTORM Data_Input.xlsx`                                           | `data/metadata/` | Metadata for all three experiments (`file_name`, channel indices, frame ranges).                                                                                  |
 
 
-The metadata sheet lists frame ranges and channel indices for each file. **BN_24062** is dual-channel; **COS7** and **Slp76** are single-channel rows (second channel columns left empty).
+The metadata sheet lists frame ranges and channel indices for each file. `AHA_24022` is dual-channel; **COS7** and **Slp76** are single-channel rows (second channel columns left empty).
 
 `**examples.zip` layout:**
 
 ```
 examples/
-  BN_24062_U2OS-WT_PST3252_AST0063_posXY2_channels_t0_posZ0.csv
+  AHA_24022_U2OS-WT_AST0126_AST0063-2_posXY1_channels_t0_posZ0.csv
   COS7_Tubulin_AF647_nstorm.csv
   Slp76_259722AM_Slp76_PLL_5min_Cell-2_detections_dc.csv
   dSTORM Data_Input.xlsx
@@ -286,7 +286,7 @@ After a successful run you should see:
 
 **1. One ZIP per metadata row** in `data/output/`:
 
-- `data/output/BN_24062_U2OS-WT_PST3252_AST0063_posXY2_channels_t0_posZ0.zip`
+- `data/output/AHA_24022_U2OS-WT_AST0126_AST0063-2_posXY1_channels_t0_posZ0.zip`
 - `data/output/COS7_Tubulin_AF647_nstorm.zip`
 - `data/output/Slp76_259722AM_Slp76_PLL_5min_Cell-2_detections_dc.zip`
 

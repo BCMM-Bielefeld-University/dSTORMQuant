@@ -193,7 +193,7 @@ Download `examples.zip` and place the contents in `data/input/` and `data/metada
 
 The metadata sheet lists frame ranges and channel indices for each file. `AHA_24022` is dual-channel; **COS7** and **Slp76** are single-channel rows (second channel columns left empty).
 
-`**examples.zip` layout:**
+`examples.zip` layout:
 
 ```
 examples/

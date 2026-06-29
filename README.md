@@ -109,7 +109,7 @@ Pre-commit configuration is defined in `.pre-commit-config.yaml`.
   pre-commit autoupdate
   ```
 
-Next: [Demo](#3-demo) or the [user guide](docs/dSTORMQuant_User_Guide.docx).
+Next: [Demo](#3-demo) or the [user guide](docs/Supplementary matrial_UserGuide.pdf).
 
 ---
 
@@ -133,7 +133,7 @@ dSTORMQuant/                     # project root
 │   ├── output/                  # Results (created on run; gitignored)
 │   └── temp/                    # Scratch (created on run; gitignored)
 ├── docs/
-│   └── dSTORMQuant_User_Guide.docx  # User guide and documentation
+│   └── Supplementary matrial_UserGuide.pdf  # User guide and documentation
 ├── finder_cpp/                  # C++ FINDER clustering implementation
 │   ├── src/                     # C++ source and bindings
 │   │   ├── main.cpp, finder.cpp, dbscan.cpp, dbscan_loop.cpp

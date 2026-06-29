@@ -49,6 +49,8 @@ pip install -e . --no-build-isolation
 cd ..
 ```
 
+
+
 ### Alternative: uv
 
 If you use [uv](https://docs.astral.sh/uv/), the repo includes `uv.lock`:
@@ -60,6 +62,8 @@ cd finder_cpp
 pip install -e . --no-build-isolation
 cd ..
 ```
+
+
 
 ### Demo data for manual testing
 
@@ -95,6 +99,8 @@ uv run ruff check .
 uv run ruff check . --fix
 ```
 
+
+
 ## 4. Testing
 
 Pytest is configured in `pyproject.toml` (`testpaths = ["tests"]`), but the repository does not yet include a `tests/` suite.
@@ -126,13 +132,15 @@ Do not rely on pushing localization CSVs, metadata workbooks, ZIP archives, or s
 
 ## 6. Documentation Requirements
 
+
+
 ### Python docstrings
 
 Use **Google-style** docstrings on all public functions and methods:
 
 - One-line summary, then optional longer description.
-- ``Args:`` for each parameter (name, type context, meaning).
-- ``Returns:`` for return value(s); ``Raises:`` when relevant.
+- `Args:` for each parameter (name, type context, meaning).
+- `Returns:` for return value(s); `Raises:` when relevant.
 - Do not repeat obvious inline comments for inputs/outputs already documented in the docstring.
 
 Example:
@@ -153,9 +161,11 @@ def spatiotemporal_grouping(df: pd.DataFrame, max_frame_gap: int = 2) -> pd.Data
 Update documentation whenever behavior changes:
 
 - `README.md` for user-facing setup, demo, and run instructions.
-- `docs/dSTORMQuant_User_Guide.docx` for detailed usage (when updated).
+- `docs/Supplementary matrial_UserGuide.pdf` for detailed usage.
 - `config/config.yaml` inline comments for new or changed parameters.
 - `src/dSTORMQuant/core/config/models.py` when adding or renaming config fields.
+
+
 
 ## 7. Continuous Integration
 
@@ -186,6 +196,8 @@ PR checklist:
 - [ ] Docs and config models are updated for any user-visible or config-visible change.
 - [ ] No sensitive data, large binaries, demo archives, or local outputs are included.
 
+
+
 ## 9. Commit Message Guidance
 
 Use concise, descriptive commit messages. Example patterns:
@@ -193,6 +205,8 @@ Use concise, descriptive commit messages. Example patterns:
 - `fix: correct drift validation key usage in docs`
 - `feat: add cluster-center kNN summary export`
 - `docs: align README with zipped output workflow`
+
+
 
 ## 10. Reporting Issues
 
@@ -203,3 +217,4 @@ When opening an issue, include:
 - Minimal reproducible input/config
 - Error logs (stack trace)
 - Environment details (OS, Python version, install method)
+

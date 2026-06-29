@@ -109,7 +109,7 @@ Pre-commit configuration is defined in `.pre-commit-config.yaml`.
   pre-commit autoupdate
   ```
 
-Next: [Demo](#3-demo) or the [user guide](docs/Supplementary matrial_UserGuide.pdf).
+Next: [Demo](#3-demo) or the [user guide](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/blob/main/docs/Supplementary%20matrial_UserGuide.pdf).
 
 ---
 

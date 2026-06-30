@@ -161,7 +161,7 @@ def spatiotemporal_grouping(df: pd.DataFrame, max_frame_gap: int = 2) -> pd.Data
 Update documentation whenever behavior changes:
 
 - `README.md` for user-facing setup, demo, and run instructions.
-- `docs/Supplementary matrial_UserGuide.pdf` for detailed usage.
+- `docs/Supplementary Materials User Guide Karki et al..pdf` for detailed usage.
 - `config/config.yaml` inline comments for new or changed parameters.
 - `src/dSTORMQuant/core/config/models.py` when adding or renaming config fields.
 

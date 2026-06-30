@@ -111,7 +111,7 @@ Pre-commit configuration is defined in `.pre-commit-config.yaml`.
 
 ### Next Steps
 - 📺 [Demo](#3-demo)
-- 📖 [User Guide](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/blob/main/docs/Supplementary%20matrial_UserGuide.pdf)
+- 📖 [User Guide](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/blob/main/docs/Supplementary%20Materials%20User%20Guide%20Karki%20et%20al..pdf)
 
 ---
 
@@ -135,7 +135,7 @@ dSTORMQuant/                     # project root
 │   ├── output/                  # Results (created on run; gitignored)
 │   └── temp/                    # Scratch (created on run; gitignored)
 ├── docs/
-│   └── Supplementary matrial_UserGuide.pdf  # User guide and documentation
+│   └── Supplementary Materials User Guide Karki et al..pdf  # User guide and documentation
 ├── finder_cpp/                  # C++ FINDER clustering implementation
 │   ├── src/                     # C++ source and bindings
 │   │   ├── main.cpp, finder.cpp, dbscan.cpp, dbscan_loop.cpp

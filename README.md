@@ -1,5 +1,12 @@
 # dSTORMQuant: A Python Package for postprocessing and quantitative analysis of SMLM datasets
 
+[![CI](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/actions/workflows/ci-cd.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![GitHub release](https://img.shields.io/github/v/release/BCMM-Bielefeld-University/dSTORMQuant)](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/releases)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+
 ## Overview
 
 dSTORMQuant is a comprehensive, modular Python tool for processing, filtering, drift correcting, and analyzing super-resolution microscopy (SMLM) data. It features a C++ accelerated FINDER clustering algorithm, flexible YAML-based configuration, and produces both quantitative results and good visualizations.
@@ -17,7 +24,9 @@ dSTORMQuant is a comprehensive, modular Python tool for processing, filtering, d
 
 ### Documentation
 
-- A complete documentation of the project can be found inside docs directory.
+- A complete documentation of the project can be found inside the `docs/` directory.
+- Contribution guide: [CONTRIBUTION.md](CONTRIBUTION.md)
+- Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 ---
 

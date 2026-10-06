@@ -57,7 +57,6 @@ dev = [
     "pytest>=8.4.2",
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
-    "pytest-qt>=4.4.0",  # For testing PyQt5 applications
     "black>=24.0.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
@@ -75,7 +74,6 @@ test = [
     "pytest>=8.4.2",
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
-    "pytest-qt>=4.4.0",
 ]
 
 all = [
@@ -94,7 +92,6 @@ dev-dependencies = [
     "pytest>=8.4.2",
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
-    "pytest-qt>=4.4.0",
     "black>=24.0.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
@@ -113,8 +110,6 @@ addopts = [
     "--cov=src/dSTORMQuant",
     "--cov-report=term-missing",
 ]
-# Optional GUI tests (not part of the default suite) use PyQt6 via project deps.
-qt_api = "pyqt6"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",

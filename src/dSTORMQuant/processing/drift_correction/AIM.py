@@ -24,7 +24,10 @@ import numpy as _np
 import pandas as pd
 import yaml as _yaml
 
-from dSTORMQuant.utils.data_handling import read_localization_csv
+from dSTORMQuant.utils.data_handling import (
+    read_localization_csv,
+    warn_if_axial_coordinates_present,
+)
 from scipy.interpolate import make_interp_spline
 from tqdm import tqdm as tqdm
 
@@ -1035,6 +1038,10 @@ def csv2hdf(path, pixelsize, sanity_config=None):
         Exception: Re-raised when required columns cannot be parsed.
     """
     data = read_localization_csv(path)
+    warn_if_axial_coordinates_present(
+        data.columns,
+        context=f"CSV→HDF conversion of '{_ospath.basename(str(path))}'",
+    )
     try:
         frames = data["frameIndex"].astype(int)
         # make sure frames start at zero:

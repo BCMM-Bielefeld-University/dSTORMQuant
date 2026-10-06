@@ -11,6 +11,8 @@
 
 dSTORMQuant is a comprehensive, modular Python tool for processing, filtering, drift correcting, and analyzing super-resolution microscopy (SMLM) data. It features a C++ accelerated FINDER clustering algorithm, flexible YAML-based configuration, and produces both quantitative results and good visualizations.
 
+**Scope (current release):** analysis is **2D (x–y) only**. If an axial column such as `z (nm)` is present in the input CSV, the software emits a clear warning and ignores those coordinates (localizations are analyzed as a lateral projection). Full 3D support is planned for a future release.
+
 ### Key Features
 
 - **Dual-channel Support**: Analyze single or dual-channel SMLM data
@@ -359,7 +361,7 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 ### **data**
 
 - `input.file_format`: Format of your input data (e.g., `csv`). Supports CSV format.
-- `input.required_columns`: Headers validated on **load** (default: `x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`). Quality columns such as sigma, photons, `**p-value`** (exact header name), and localization precision are **optional** in the CSV. Match `required_columns` to what your files actually contain.
+- `input.required_columns`: Headers validated on **load** (default: `x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`). Quality columns such as sigma, photons, `**p-value`** (exact header name), and localization precision are **optional** in the CSV. Match `required_columns` to what your files actually contain. Axial columns (e.g. `z (nm)`) are **not** used in the current 2D release; if present, a warning is logged and they are dropped.
 - `input.xlsx_filename`: Name of the metadata Excel file (placed in `data/metadata/`). The pipeline uses this to discover which input files to process; input CSV files should be in `data/input/`.
 - `input.required_metadata_columns`: Dict mapping role to metadata Excel column name. **Required keys:** `file_name`, `first_channel_index`, `first_ch_frame_last`, `second_channel_index`, `second_ch_frame_last`. Headers are matched after normalization (strip, lower case, single space). Single-channel rows: leave second channel index and/or last frame blank or `None`.
 - `input.optional_metadata_columns`: Optional dict (default `{}`). Allowed keys: `experiment_number`, `initials`, `tag`, `first_channel_label`, `second_channel_label` — each maps to an Excel header; those columns may be absent from the sheet.

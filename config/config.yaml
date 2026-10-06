@@ -9,6 +9,7 @@
 data:
   input:
     file_format: "csv"  # Format of input files. Options: csv
+    # Current release is 2D-only.
     # Columns that needs to be present on csv file.
     required_columns:
       - "x (nm)"

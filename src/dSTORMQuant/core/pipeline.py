@@ -25,7 +25,10 @@ from dSTORMQuant.processing.cell_detection.cell_detection import (
     voronoi_cell_detection,
 )
 from dSTORMQuant.processing.drift_correction.drift import apply_aim_drift
-from dSTORMQuant.processing.filtering.filtering import apply_filters
+from dSTORMQuant.processing.filtering.filtering import (
+    apply_filters,
+    write_filtering_report_json,
+)
 from dSTORMQuant.processing.filtering.temporal_grouping import (
     duration_filtering,
     run_spatiotemporal_grouping,
@@ -61,6 +64,9 @@ from dSTORMQuant.visualization.visualization import (
 )
 
 logger = get_logger()
+
+# Per-file outcome for main() exit codes: ok | failed
+FileProcessStatus = str
 
 
 def setup_directories(project_root: Path) -> dict[str, Path]:
@@ -481,9 +487,13 @@ def apply_filtering_pipeline(
     """
     logger.info("🧼 Filtering data...")
 
-    filter_results, applied_flags = apply_filters(df, config)
+    filter_results, applied_flags, filter_reports = apply_filters(df, config)
     filtered_path = ensure_directory(os.path.join(temp_dir, "filtered"))
-
+    write_filtering_report_json(
+        filter_reports,
+        os.path.join(filtered_path, "filtering_report.json"),
+        input_file=input_file_name,
+    )
     filter_steps = [
         ("after_sigma_filter", filter_results["after_sigma_filter"]),
         ("after_photons_count_filter", filter_results["after_photons_count_filter"]),
@@ -973,6 +983,11 @@ def export_final_results(
         file_extension=".csv",
     )
     move_all_files(
+        os.path.join(temp_dir, "filtered"),
+        final_data_output_path,
+        file_extension=".json",
+    )
+    move_all_files(
         os.path.join(temp_dir, "temporal_grouped"),
         final_data_output_path,
         file_extension=".csv",
@@ -1019,7 +1034,7 @@ def process_single_file(
     metadata_df: pd.DataFrame,
     config: dict[str, Any],
     required_columns: list[str],
-) -> dict[str, float]:
+) -> tuple[dict[str, float], FileProcessStatus]:
     """
     Process a single input file through the entire pipeline.
 
@@ -1033,7 +1048,7 @@ def process_single_file(
         required_columns: List of required column names
 
     Returns:
-        Dictionary of step execution times
+        Step execution times and status (``ok`` or ``failed``).
     """
     input_file_path = os.path.join(input_dir, input_file_name)
     logger.info(f"\n📂 Processing {input_file_path}...")
@@ -1057,13 +1072,13 @@ def process_single_file(
 
     if not os.path.exists(input_file_path):
         logger.error(f"Input file '{input_file_path}' not found.")
-        return step_times
+        return step_times, "failed"
 
     # Step 1: Load and validate data
     t0 = time.time()
     df = load_and_validate_data(input_file_path, required_columns)
     if df is None:
-        return step_times
+        return step_times, "failed"
     step_times["load_data"] = time.time() - t0
 
     # Extract and configure channels
@@ -1071,7 +1086,7 @@ def process_single_file(
         df, input_file_name, metadata_row, config, input_dir
     )
     if new_df is None:
-        return step_times
+        return step_times, "failed"
 
     # Step 2: Initial visualization
     t0 = time.time()
@@ -1173,4 +1188,5 @@ def process_single_file(
     for step, duration in step_times.items():
         logger.info(f"    Step '{step}' took {duration:.2f} seconds")
 
-    return step_times
+    logger.info(f"✅ Completed {input_file_name} successfully.")
+    return step_times, "ok"

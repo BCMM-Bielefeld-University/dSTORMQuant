@@ -361,7 +361,8 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 ### **data**
 
 - `input.file_format`: Format of your input data (e.g., `csv`). Supports CSV format.
-- `input.required_columns`: Headers validated on **load** (default: `x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`). Quality columns such as sigma, photons, `**p-value`** (exact header name), and localization precision are **optional** in the CSV. Match `required_columns` to what your files actually contain. Axial columns (e.g. `z (nm)`) are **not** used in the current 2D release; if present, a warning is logged and they are dropped.
+- `input.required_columns`: Headers validated on **load** (default: `x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`). Quality columns such as sigma, photons, `**p-value**` (exact header name), and localization precision are **optional** in the CSV. Match `required_columns` to what your files actually contain. Axial columns (e.g. `z (nm)`) are **not** used in the current 2D release; if present, a warning is logged and they are dropped.
+- After each run, **`filtering_report.json`** in `test_data/` lists which filter steps were actually applied (see **filtering** below).
 - `input.xlsx_filename`: Name of the metadata Excel file (placed in `data/metadata/`). The pipeline uses this to discover which input files to process; input CSV files should be in `data/input/`.
 - `input.required_metadata_columns`: Dict mapping role to metadata Excel column name. **Required keys:** `file_name`, `first_channel_index`, `first_ch_frame_last`, `second_channel_index`, `second_ch_frame_last`. Headers are matched after normalization (strip, lower case, single space). Single-channel rows: leave second channel index and/or last frame blank or `None`.
 - `input.optional_metadata_columns`: Optional dict (default `{}`). Allowed keys: `experiment_number`, `initials`, `tag`, `first_channel_label`, `second_channel_label` — each maps to an Excel header; those columns may be absent from the sheet.
@@ -379,7 +380,8 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 ### **filtering**
 
 - Each of `sigma`, `intensity`, `localization_precision`, and `p_value` supports `use: true|false` to enable or disable that step (default `true` if omitted). With `use: false`, the step is skipped even when the matching measurement columns are present in the CSV.
-- A step is also skipped when its measurement columns are missing (e.g. no `sx`/`sy` for sigma); a warning is logged.
+- If an **enabled** filter cannot run because measurement columns are missing after drift correction (internal names `sx`/`sy`, `photons`, `lp`, `pvalue`), that step is **skipped** for that file; a warning is logged and the step is recorded in **`filtering_report.json`** (`skipped_missing_columns: true` on that step; file-level flag with the same name if any enabled step was skipped for missing columns). The run continues—no per-file YAML is required. Set `use: false` globally only when you never want a step for any input in the batch.
+- Exit codes from `dSTORMQuant` CLI: **0** = all files completed; **1** = at least one file failed for a hard error (load, drift, etc.).
 - `sigma.min_value` / `sigma.max_value`, `intensity.min_value`, `localization_precision.threshold_value`, `p_value.threshold_value`: thresholds read only from YAML. The input localization CSV supplies measurements (e.g. sigma, photons, precision); it does not carry separate filter-parameter columns.
 
 ### **cell_detection**

@@ -131,13 +131,18 @@ def plot_metrics(
 
     # Map internal metric keys -> CSV column (raw) or post-process column name
     if is_raw:
+        iso_sigma = _pick_raw_col("sigma [nm]", "sigma (nm)", "sigma")
         col_map: dict[str, str | None] = {
-            "sx": _pick_raw_col("sigmaX (nm)"),
-            "sy": _pick_raw_col("sigmaY (nm)"),
+            "sx": _pick_raw_col("sigmaX (nm)") or iso_sigma,
+            "sy": _pick_raw_col("sigmaY (nm)") or iso_sigma,
             "bg": _pick_raw_col("background (photons/nm^2)"),
-            "intensity": _pick_raw_col("intensity (photons)"),
+            "intensity": _pick_raw_col(
+                "intensity (photons)", "intensity (photon)", "intensity"
+            ),
             "pvalue": _pick_raw_col("p-value", "pvalue"),
-            "lp": _pick_raw_col("localization precision (nm)"),
+            "lp": _pick_raw_col(
+                "localization precision (nm)", "uncertainty [nm]", "uncertainty (nm)"
+            ),
         }
     else:
         col_map = {

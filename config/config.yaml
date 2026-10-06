@@ -49,7 +49,7 @@ channels:
 # Visualization (Napari screenshots on/off)
 # -----------------------------
 visualization:
-  use_napari: true   # false: skip Napari point/cluster screenshots
+  use_napari: false   # false: skip Napari point/cluster screenshots
 
 # -----------------------------
 # Filtering parameters

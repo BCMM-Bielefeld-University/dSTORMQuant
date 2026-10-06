@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import pandas as pd
-
 from dSTORMQuant.processing.filtering.filtering import apply_filters
 
 
 def test_apply_filters_removes_out_of_range_rows(
     synthetic_localizations: pd.DataFrame, filtering_config: dict
 ) -> None:
-    results, applied = apply_filters(synthetic_localizations, filtering_config)
+    results, applied, _reports = apply_filters(synthetic_localizations, filtering_config)
 
     assert applied["after_sigma_filter"] is True
     assert applied["after_photons_count_filter"] is True
@@ -33,13 +32,14 @@ def test_apply_filters_skips_missing_measurement_columns(
             "frame": [1, 2],
         }
     )
-    results, applied = apply_filters(df, filtering_config)
+    results, applied, reports = apply_filters(df, filtering_config)
 
     assert applied["after_sigma_filter"] is False
     assert applied["after_photons_count_filter"] is False
     assert applied["after_localization_precision_filter"] is False
     assert applied["after_pvalue_filter"] is False
     assert len(results["after_pvalue_filter"]) == 2
+    assert any(r.skipped_missing_columns for r in reports)
 
 
 def test_apply_filters_skips_disabled_steps(
@@ -53,7 +53,7 @@ def test_apply_filters_skips_disabled_steps(
             "p_value": {"use": False, "threshold_value": 0.1},
         }
     }
-    results, applied = apply_filters(synthetic_localizations, config)
+    results, applied, reports = apply_filters(synthetic_localizations, config)
 
     assert applied["after_sigma_filter"] is False
     assert applied["after_pvalue_filter"] is False
@@ -61,3 +61,5 @@ def test_apply_filters_skips_disabled_steps(
     assert applied["after_localization_precision_filter"] is True
     # With sigma and p-value disabled, rows 0–2 pass intensity + lp; row 3 fails lp.
     assert len(results["after_pvalue_filter"]) == 3
+
+

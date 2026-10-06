@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import sys
 import time
 from pathlib import Path
 
@@ -52,10 +53,11 @@ def main() -> None:
 
     # Process all files
     total_start_time = time.time()
+    statuses: list[str] = []
 
     for input_file_name in input_files:
         try:
-            process_single_file(
+            _, status = process_single_file(
                 input_file_name,
                 dirs["input_dir"],
                 dirs["output_dir"],
@@ -64,15 +66,25 @@ def main() -> None:
                 config,
                 required_columns,
             )
+            statuses.append(status)
         except Exception as e:
             logger.exception(f"❌ Error during processing {input_file_name}: {e}")
+            statuses.append("failed")
             continue
 
     # Cleanup and final logging
     shutil.rmtree(dirs["temp_dir"])
     total_time = time.time() - total_start_time
     logger.info(f"⏱️ Total execution time for all files: {total_time:.2f} seconds")
-    logger.info("✅ All files processed.")
+
+    n_failed = sum(1 for s in statuses if s == "failed")
+    n_ok = sum(1 for s in statuses if s == "ok")
+    logger.info("Run summary: %s ok, %s failed.", n_ok, n_failed)
+
+    if n_failed:
+        logger.error("One or more files failed; exiting with code 1.")
+        sys.exit(1)
+    logger.info("✅ All files processed successfully.")
 
 
 if __name__ == "__main__":

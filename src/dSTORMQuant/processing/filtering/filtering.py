@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 from dataclasses import asdict, dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -14,24 +13,13 @@ from dSTORMQuant.utils.logger import get_logger
 logger = get_logger()
 
 
-class FilterSkipReason(str, Enum):
-    DISABLED = "disabled_in_config"
-    MISSING_COLUMNS = "missing_columns"
-
-
 @dataclass(frozen=True)
 class FilterStepReport:
-    step_key: str
-    display_name: str
+    step_name: str
     enabled: bool
     applied: bool
-    skip_reason: FilterSkipReason | None
+    skipped_missing_columns: bool
     required_columns: tuple[str, ...] = ()
-
-    @property
-    def skipped_missing_columns(self) -> bool:
-        """Enabled in config but not applied because quality columns were absent."""
-        return self.enabled and self.skip_reason == FilterSkipReason.MISSING_COLUMNS
 
 
 def _filter_step_enabled(step_cfg: dict[str, Any]) -> bool:
@@ -73,21 +61,20 @@ def apply_filters(
 
     def _finish_step(
         step_key: str,
-        display_name: str,
         enabled: bool,
-        skip_reason: FilterSkipReason | None,
         required: tuple[str, ...],
         *,
         did_apply: bool,
+        skipped_missing_columns: bool = False,
     ) -> None:
         applied[step_key] = did_apply
+        step_name = step_key.removeprefix("after_")
         reports.append(
             FilterStepReport(
-                step_key=step_key,
-                display_name=display_name,
+                step_name=step_name,
                 enabled=enabled,
                 applied=did_apply,
-                skip_reason=skip_reason,
+                skipped_missing_columns=skipped_missing_columns,
                 required_columns=required,
             )
         )
@@ -99,9 +86,7 @@ def apply_filters(
         logger.info("Sigma filter disabled in config (use: false); skipping.")
         _finish_step(
             "after_sigma_filter",
-            "sigma",
             False,
-            FilterSkipReason.DISABLED,
             ("sx", "sy"),
             did_apply=False,
         )
@@ -121,9 +106,7 @@ def apply_filters(
         current = filtered
         _finish_step(
             "after_sigma_filter",
-            "sigma",
             True,
-            None,
             ("sx", "sy"),
             did_apply=True,
         )
@@ -133,11 +116,10 @@ def apply_filters(
         )
         _finish_step(
             "after_sigma_filter",
-            "sigma",
             True,
-            FilterSkipReason.MISSING_COLUMNS,
             ("sx", "sy"),
             did_apply=False,
+            skipped_missing_columns=True,
         )
 
     results["after_sigma_filter"] = current.copy()
@@ -149,9 +131,7 @@ def apply_filters(
         logger.info("Intensity filter disabled in config (use: false); skipping.")
         _finish_step(
             "after_photons_count_filter",
-            "intensity (photons)",
             False,
-            FilterSkipReason.DISABLED,
             ("photons",),
             did_apply=False,
         )
@@ -166,9 +146,7 @@ def apply_filters(
         current = filtered
         _finish_step(
             "after_photons_count_filter",
-            "intensity (photons)",
             True,
-            None,
             ("photons",),
             did_apply=True,
         )
@@ -178,11 +156,10 @@ def apply_filters(
         )
         _finish_step(
             "after_photons_count_filter",
-            "intensity (photons)",
             True,
-            FilterSkipReason.MISSING_COLUMNS,
             ("photons",),
             did_apply=False,
+            skipped_missing_columns=True,
         )
 
     results["after_photons_count_filter"] = current.copy()
@@ -196,9 +173,7 @@ def apply_filters(
         )
         _finish_step(
             "after_localization_precision_filter",
-            "localization precision",
             False,
-            FilterSkipReason.DISABLED,
             ("lp",),
             did_apply=False,
         )
@@ -213,9 +188,7 @@ def apply_filters(
         current = filtered
         _finish_step(
             "after_localization_precision_filter",
-            "localization precision",
             True,
-            None,
             ("lp",),
             did_apply=True,
         )
@@ -226,11 +199,10 @@ def apply_filters(
         )
         _finish_step(
             "after_localization_precision_filter",
-            "localization precision",
             True,
-            FilterSkipReason.MISSING_COLUMNS,
             ("lp",),
             did_apply=False,
+            skipped_missing_columns=True,
         )
 
     results["after_localization_precision_filter"] = current.copy()
@@ -242,9 +214,7 @@ def apply_filters(
         logger.info("P-value filter disabled in config (use: false); skipping.")
         _finish_step(
             "after_pvalue_filter",
-            "p-value",
             False,
-            FilterSkipReason.DISABLED,
             ("pvalue",),
             did_apply=False,
         )
@@ -258,9 +228,7 @@ def apply_filters(
         current = filtered
         _finish_step(
             "after_pvalue_filter",
-            "p-value",
             True,
-            None,
             ("pvalue",),
             did_apply=True,
         )
@@ -270,11 +238,10 @@ def apply_filters(
         )
         _finish_step(
             "after_pvalue_filter",
-            "p-value",
             True,
-            FilterSkipReason.MISSING_COLUMNS,
             ("pvalue",),
             did_apply=False,
+            skipped_missing_columns=True,
         )
 
     results["after_pvalue_filter"] = current.copy()
@@ -299,11 +266,11 @@ def log_filtering_summary(
             status = "disabled (use: false)"
         elif r.applied:
             status = "applied"
-        elif r.skip_reason == FilterSkipReason.MISSING_COLUMNS:
+        elif r.skipped_missing_columns:
             status = f"NOT APPLIED — missing columns {list(r.required_columns)}"
         else:
             status = "not applied"
-        lines.append(f"  - {r.display_name}: {status}")
+        lines.append(f"  - {r.step_name}: {status}")
 
     any_missing_column_skips = any(r.skipped_missing_columns for r in reports)
     msg = "\n".join(lines)
@@ -327,16 +294,9 @@ def write_filtering_report_json(
     """Write per-step filtering status for downstream users and QC."""
     payload = {
         "input_file": input_file,
-        "steps": [
-            {
-                **{k: v for k, v in asdict(r).items() if k != "skip_reason"},
-                "skip_reason": r.skip_reason.value if r.skip_reason else None,
-                "skipped_missing_columns": r.skipped_missing_columns,
-            }
-            for r in reports
-        ],
-        "enabled_steps": sum(1 for r in reports if r.enabled),
-        "applied_steps": sum(1 for r in reports if r.applied),
+        "steps": [asdict(r) for r in reports],
+        "number_of_enabled_steps": sum(1 for r in reports if r.enabled),
+        "number_of_applied_steps": sum(1 for r in reports if r.applied),
         "skipped_missing_columns": any(r.skipped_missing_columns for r in reports),
     }
     out = Path(path)

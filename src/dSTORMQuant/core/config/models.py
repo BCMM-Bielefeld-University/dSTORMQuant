@@ -193,6 +193,7 @@ class ChannelsConfig(BaseModel):
 class IntensityFilterConfig(BaseModel):
     """Intensity filtering parameters (minimum photon count)."""
 
+    use: bool = Field(default=True, description="Enable/disable intensity filter")
     min_value: float = Field(
         ..., gt=0, description="Minimum photon count required (filters out dim spots)"
     )
@@ -201,6 +202,9 @@ class IntensityFilterConfig(BaseModel):
 class LocalizationPrecisionFilter(BaseModel):
     """Localization precision filtering parameters."""
 
+    use: bool = Field(
+        default=True, description="Enable/disable localization precision filter"
+    )
     threshold_value: float = Field(
         ..., gt=0, description="Maximum localization precision (nm)"
     )
@@ -209,12 +213,14 @@ class LocalizationPrecisionFilter(BaseModel):
 class PValueFilter(BaseModel):
     """P-value filtering parameters."""
 
+    use: bool = Field(default=True, description="Enable/disable p-value filter")
     threshold_value: float = Field(..., gt=0, le=1, description="Maximum p-value")
 
 
 class SigmaFilter(BaseModel):
     """Sigma filtering parameters."""
 
+    use: bool = Field(default=True, description="Enable/disable sigma filter")
     min_value: float = Field(..., ge=0, description="Minimum sigma (nm)")
     max_value: float = Field(..., gt=0, description="Maximum sigma (nm)")
 

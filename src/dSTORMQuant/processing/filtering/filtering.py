@@ -9,14 +9,19 @@ from dSTORMQuant.utils.logger import get_logger
 logger = get_logger()
 
 
+def _filter_step_enabled(step_cfg: dict[str, Any]) -> bool:
+    """Return whether a filter step is enabled (defaults to True if omitted)."""
+    return bool(step_cfg.get("use", True))
+
+
 def apply_filters(
     df: pd.DataFrame,
     config: dict[str, Any],
 ) -> tuple[dict[str, pd.DataFrame], dict[str, bool]]:
     """Apply sigma, intensity, localization-precision, and p-value filters in sequence.
 
-    Filter thresholds are read from ``config['filtering']``. Stages are skipped when
-    required measurement columns are absent.
+    Filter thresholds are read from ``config['filtering']``. Each stage is skipped when
+    ``use: false`` or when required measurement columns are absent.
 
     Args:
         df: Localization dataframe before filtering.
@@ -41,7 +46,9 @@ def apply_filters(
     current = df
     # --- Sigma ---
     sigma_cfg = filtering["sigma"]
-    if {"sx", "sy"}.issubset(current.columns):
+    if not _filter_step_enabled(sigma_cfg):
+        logger.info("Sigma filter disabled in config (use: false); skipping.")
+    elif {"sx", "sy"}.issubset(current.columns):
         sigma_min = float(sigma_cfg["min_value"])
         sigma_max = float(sigma_cfg["max_value"])
         filtered = current[
@@ -65,7 +72,9 @@ def apply_filters(
 
     # --- Intensity ---
     int_cfg = filtering["intensity"]
-    if "photons" in current.columns:
+    if not _filter_step_enabled(int_cfg):
+        logger.info("Intensity filter disabled in config (use: false); skipping.")
+    elif "photons" in current.columns:
         intensity_min = float(int_cfg["min_value"])
         filtered = current[current["photons"] >= intensity_min].copy()
         n0, n1 = len(current), len(filtered)
@@ -84,7 +93,11 @@ def apply_filters(
 
     # --- Localization precision ---
     lp_cfg = filtering["localization_precision"]
-    if "lp" in current.columns:
+    if not _filter_step_enabled(lp_cfg):
+        logger.info(
+            "Localization precision filter disabled in config (use: false); skipping."
+        )
+    elif "lp" in current.columns:
         lp_thr = float(lp_cfg["threshold_value"])
         filtered = current[current["lp"] < lp_thr].copy()
         n0, n1 = len(current), len(filtered)
@@ -104,7 +117,9 @@ def apply_filters(
 
     # --- P-value ---
     pv_cfg = filtering["p_value"]
-    if "pvalue" in current.columns:
+    if not _filter_step_enabled(pv_cfg):
+        logger.info("P-value filter disabled in config (use: false); skipping.")
+    elif "pvalue" in current.columns:
         pv_thr = float(pv_cfg["threshold_value"])
         filtered = current[current["pvalue"] < pv_thr].copy()
         n0, n1 = len(current), len(filtered)

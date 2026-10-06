@@ -378,7 +378,8 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 
 ### **filtering**
 
-- Each of `sigma`, `intensity`, `localization_precision`, and `p_value` supports `use: true|false` to enable or disable that step.
+- Each of `sigma`, `intensity`, `localization_precision`, and `p_value` supports `use: true|false` to enable or disable that step (default `true` if omitted). With `use: false`, the step is skipped even when the matching measurement columns are present in the CSV.
+- A step is also skipped when its measurement columns are missing (e.g. no `sx`/`sy` for sigma); a warning is logged.
 - `sigma.min_value` / `sigma.max_value`, `intensity.min_value`, `localization_precision.threshold_value`, `p_value.threshold_value`: thresholds read only from YAML. The input localization CSV supplies measurements (e.g. sigma, photons, precision); it does not carry separate filter-parameter columns.
 
 ### **cell_detection**

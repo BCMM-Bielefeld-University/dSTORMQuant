@@ -56,13 +56,17 @@ visualization:
 # -----------------------------
 filtering:
   sigma:
+    use: true                 # false: skip sigma filter even if sx/sy columns exist
     min_value: 50.0           # Minimum allowed sigma (nm) for spot width
     max_value: 250.0          # Maximum allowed sigma (nm) for spot width
   intensity:
+    use: true                 # false: skip photon count filter
     min_value: 300.0          # Minimum photon count
   localization_precision:
+    use: true                 # false: skip localization precision filter
     threshold_value: 20.0     # Maximum allowed localization precision (nm)
   p_value:
+    use: true                 # false: skip p-value filter
     threshold_value: 0.1      # Maximum allowed p-value
 
 

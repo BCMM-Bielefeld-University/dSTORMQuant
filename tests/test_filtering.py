@@ -40,3 +40,24 @@ def test_apply_filters_skips_missing_measurement_columns(
     assert applied["after_localization_precision_filter"] is False
     assert applied["after_pvalue_filter"] is False
     assert len(results["after_pvalue_filter"]) == 2
+
+
+def test_apply_filters_skips_disabled_steps(
+    synthetic_localizations: pd.DataFrame,
+) -> None:
+    config = {
+        "filtering": {
+            "sigma": {"use": False, "min_value": 50.0, "max_value": 250.0},
+            "intensity": {"min_value": 300.0},
+            "localization_precision": {"threshold_value": 20.0},
+            "p_value": {"use": False, "threshold_value": 0.1},
+        }
+    }
+    results, applied = apply_filters(synthetic_localizations, config)
+
+    assert applied["after_sigma_filter"] is False
+    assert applied["after_pvalue_filter"] is False
+    assert applied["after_photons_count_filter"] is True
+    assert applied["after_localization_precision_filter"] is True
+    # With sigma and p-value disabled, rows 0–2 pass intensity + lp; row 3 fails lp.
+    assert len(results["after_pvalue_filter"]) == 3

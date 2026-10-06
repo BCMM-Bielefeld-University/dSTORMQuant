@@ -264,6 +264,7 @@ Future goals:
 - Expand automated unit and integration tests
 - Extending input parsing to additional SMLM software export formats (e.g. ThunderSTORM or NimOS column layouts) based on user needs
 - Adding further analysis methods for individual pipeline stages (e.g., clustering and drift correction)
+- Adding support for 3D SMLM analysis
 
 Bug reports, feature requests, and pull requests via GitHub are the preferred
 channels for community involvement.

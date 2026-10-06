@@ -7,12 +7,12 @@ import yaml
 from dSTORMQuant.utils.logger import get_logger
 from dSTORMQuant.utils.utils import normalize_metadata_header
 
-from .models import SMMLConfig
+from .models import SMLMConfig
 
 logger = get_logger()
 
 # Global configuration instance
-_config_instance: SMMLConfig | None = None
+_config_instance: SMLMConfig | None = None
 
 
 def load_config(config_file: str | Path) -> dict[str, Any]:
@@ -54,7 +54,7 @@ def load_config(config_file: str | Path) -> dict[str, Any]:
             config_data = yaml.safe_load(f)
 
         # Validate using Pydantic
-        _config_instance = SMMLConfig(**config_data)
+        _config_instance = SMLMConfig(**config_data)
 
         logger.info("✅ Configuration loaded and validated successfully.")
 

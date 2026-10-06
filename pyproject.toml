@@ -111,11 +111,10 @@ python_functions = ["test_*"]
 addopts = [
     "--verbose",
     "--cov=src/dSTORMQuant",
-    "--cov-report=html",
     "--cov-report=term-missing",
-    "--cov-report=xml",
 ]
-qt_api = "pyqt5"
+# Optional GUI tests (not part of the default suite) use PyQt6 via project deps.
+qt_api = "pyqt6"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",

@@ -103,11 +103,22 @@ uv run ruff check . --fix
 
 ## 4. Testing
 
-Pytest is configured in `pyproject.toml` (`testpaths = ["tests"]`), but the repository does not yet include a `tests/` suite.
+Automated tests live under `tests/` and use pytest (configured in `pyproject.toml`).
 
-When you add or change behavior:
+### Current status
+
+| Layer | Status |
+| ----- | ------ |
+| Unit tests (config, filtering, temporal grouping, NN helpers, utils) | Present under `tests/`; run in CI |
+| Lint / smoke / package build | Present in CI |
+| Full end-to-end pipeline on demo CSVs | Manual (see README demo) |
+| Napari / GUI visualization | Not in default CI |
+| FINDER numerical regression | Package wheel build in CI; dedicated numeric suite planned |
+
+### Run tests
 
 ```bash
+pip install -e ".[test]"
 pytest
 ```
 
@@ -117,7 +128,7 @@ Or with uv:
 uv run pytest
 ```
 
-Until automated tests cover your change, include a short manual validation note in your PR (for example: demo data run, config change exercised, or script output checked).
+When you change behavior, add or update unit tests where practical. For pipeline steps not yet covered, include a short manual validation note in your PR (for example: demo data run, config change exercised, or script output checked).
 
 ## 5. Data and Outputs
 
@@ -173,9 +184,10 @@ Pull requests and pushes to `main` / `master` run [.github/workflows/ci-cd.yml](
 
 - `ruff check .`
 - Editable install smoke check (`import dSTORMQuant`, config loader import)
+- `pytest` unit tests under `tests/`
 - Build artifacts for the main package and `finder_cpp`
 
-Your PR should pass Ruff locally before review. CI does not currently run pytest.
+Your PR should pass Ruff and `pytest` locally before review.
 
 ## 8. Branching and Pull Requests
 

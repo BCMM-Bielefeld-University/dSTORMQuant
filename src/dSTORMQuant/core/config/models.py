@@ -443,8 +443,8 @@ class VisualizationConfig(BaseModel):
     )
 
 
-class SMMLConfig(BaseModel):
-    """Main SMLM pipeline configuration."""
+class SMLMConfig(BaseModel):
+    """Main dSTORMQuant pipeline configuration."""
 
     data: DataConfig
     channels: ChannelsConfig

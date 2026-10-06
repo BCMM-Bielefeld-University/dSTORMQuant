@@ -109,6 +109,32 @@ Pre-commit configuration is defined in `.pre-commit-config.yaml`.
   pre-commit autoupdate
   ```
 
+### Testing
+
+Automated unit tests under `tests/` and are run in CI.
+
+**Current scope**
+
+- Configuration loading / Pydantic validation (`config/config.yaml`)
+- Localization filtering
+- Spatiotemporal grouping
+- Nearest-neighbor distance helpers
+- Small utility helpers (metadata header normalization, channel label parsing)
+
+**Not yet automated**
+
+- Full end-to-end pipeline runs on large demo datasets
+- Napari / GUI visualization paths
+- FINDER C++ numerical regression suites beyond the package build step
+
+**Run locally** (after `pip install -e ".[dev]"` or `pip install -e ".[test]"`):
+
+```bash
+pytest
+```
+
+End-to-end correctness on real SMLM data is still validated manually using the published [demo datasets](#3-demo).
+
 ### Next Steps
 - 📺 [Demo](#3-demo)
 - 📖 [User Guide](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/blob/main/docs/Supplementary%20Materials%20User%20Guide%20Karki%20et%20al..pdf)
@@ -165,6 +191,7 @@ dSTORMQuant/                     # project root
 │   ├── processing/
 │   ├── visualization/
 │   └── utils/
+├── tests/                       # Automated unit tests (pytest)
 ├── setup.py
 ├── ruff.toml                     # Ruff configuration
 ├── pyproject.toml               # Project configuration and entry points
@@ -440,6 +467,7 @@ This repository includes a GitHub Actions workflow at `.github/workflows/ci-cd.y
 - **What it does**:
   - Runs `ruff check .`
   - Runs a lightweight **smoke check** (compiles Python sources and checks core imports)
+  - Runs automated **unit tests** (`pytest` under `tests/`)
   - Builds distribution artifacts for the main package (`dist/`) and `finder_cpp`
   - On `v`* tags, creates a GitHub Release and attaches the built artifacts
 

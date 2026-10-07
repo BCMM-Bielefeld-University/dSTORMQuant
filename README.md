@@ -11,7 +11,7 @@
 
 dSTORMQuant is a comprehensive, modular Python tool for processing, filtering, drift correcting, and analyzing super-resolution microscopy (SMLM) data. It features a C++ accelerated FINDER clustering algorithm, flexible YAML-based configuration, and produces both quantitative results and good visualizations.
 
-**Scope (current release):** analysis is **2D (x–y) only**. If an axial column such as `z (nm)` is present in the input CSV, the software emits a clear warning and ignores those coordinates (localizations are analyzed as a lateral projection). Full 3D support is planned for a future release.
+**Current release:** analysis is **2D (x–y) only**. If an axial column such as `z (nm)` is present in the input CSV, the software emits a clear warning and ignores those coordinates (localizations are analyzed as a lateral projection). Full 3D support is planned for a future release.
 
 ### Key Features
 

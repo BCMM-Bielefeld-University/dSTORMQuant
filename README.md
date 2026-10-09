@@ -11,7 +11,7 @@
 
 dSTORMQuant is a comprehensive, modular Python tool for processing, filtering, drift correcting, and analyzing super-resolution microscopy (SMLM) data. It features a C++ accelerated FINDER clustering algorithm, flexible YAML-based configuration, and produces both quantitative results and good visualizations.
 
-**Current release:** analysis is **2D (x–y) only**. If `z (nm)` (or another axial header) contains **numeric values**, load **aborts** that file with an error—do not upload 3D localizations. If the z column exists but is **empty / all missing**, it is dropped with a warning and the 2D run continues. Full 3D support is planned for a future release.
+**Current release:** analysis is **2D (x–y) only**. If `z (nm)` (or another axial header) contains **non-zero** numeric values, load **aborts** that file—do not upload 3D localizations. If the z column is **empty, all missing, or all zero** (common 2D export placeholder), it is dropped with a warning and the 2D run continues. Full 3D support is planned for a future release.
 
 **CSV schema:** use the documented headers (rename exports into `data/input/` as needed). Missing **geometry/index** columns (`x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`) abort that file. Missing **quality** columns do **not** stop the run: the matching filter steps are skipped, a warning is logged, and **`filtering_report.json`** records what ran.
 
@@ -363,7 +363,7 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 ### **data**
 
 - `input.file_format`: Format of your input data (e.g., `csv`). Supports CSV format.
-- `input.required_columns`: Exact headers validated on **load** (default: `x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`). Missing any of these **aborts that file**. Axial `z (nm)` with numeric values **aborts** (3D not supported); an empty z column is dropped with a warning. `channelName` is dropped if present.
+- `input.required_columns`: Exact headers validated on **load** (default: `x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`). Missing any of these **aborts that file**. Axial `z (nm)` with **non-zero** values **aborts** (3D not supported); an empty or all-zero z column is dropped with a warning. `channelName` is dropped if present.
 - **Optional quality columns** (exact NimOS-style names; rename other exports first): `background (photons/nm^2)`, `sigmaX (nm)`, `sigmaY (nm)`, `intensity (photons)`, `p-value` (or `pvalue`), `localization precision (nm)`. If a quality column is absent, the matching filter is **skipped**—the pipeline continues; see **filtering** and **`filtering_report.json`**.
 - After each run, **`filtering_report.json`** in `test_data/` lists which filter steps were applied or skipped.
 - `input.xlsx_filename`: Name of the metadata Excel file (placed in `data/metadata/`). The pipeline uses this to discover which input files to process; input CSV files should be in `data/input/`.
@@ -385,6 +385,7 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 - Each of `sigma`, `intensity`, `localization_precision`, and `p_value` supports `use: true|false` to enable or disable that step (default `true` if omitted). With `use: false`, the step is skipped even when the matching measurement columns are present in the CSV.
 - If an **enabled** filter cannot run because measurement columns are missing after drift correction, that step is **skipped**; a warning states the **reason** (CSV headers must match the documented names, e.g. `sigmaX (nm)`, `intensity (photons)`, `localization precision (nm)`, `p-value`) and **`filtering_report.json`** records `skipped_missing_columns` plus `expected_csv_columns`. The run continues. Set `use: false` globally only when you never want a step for any input in the batch.
 - Exit codes from `dSTORMQuant` CLI: **0** = all files completed; **1** = at least one file failed for a hard error (load, drift, etc.).
+- After a batch finishes, **`data/output/run_summary.txt`** (human-readable) and **`run_summary.json`** list each input CSV: status, failure reason if any, duration, and which filters were applied / skipped.
 - `sigma.min_value` / `sigma.max_value`, `intensity.min_value`, `localization_precision.threshold_value`, `p_value.threshold_value`: thresholds read only from YAML. The input localization CSV supplies measurements (e.g. sigma, photons, precision); it does not carry separate filter-parameter columns.
 
 ### **cell_detection**

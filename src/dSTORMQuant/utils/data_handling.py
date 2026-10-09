@@ -23,7 +23,7 @@ _AXIAL_COLUMN_CANDIDATES = (
 
 
 class AxialDataNotSupportedError(ValueError):
-    """Raised when the CSV contains axial coordinates with numeric values (3D data)."""
+    """Raised when the CSV contains non-zero axial coordinates (true 3D data)."""
 
 
 def read_localization_csv(file_path: str | Path) -> pd.DataFrame:
@@ -52,9 +52,14 @@ def find_axial_columns(columns: pd.Index | list[str]) -> list[str]:
 
 
 def axial_column_has_numeric_values(series: pd.Series) -> bool:
-    """Return True if the series has any non-missing numeric values."""
+    """Return True if the series has any finite non-zero values (true 3D data).
+
+    Missing values and zeros are treated as a 2D placeholder (common in NimOS
+    and other exporters that always write a ``z`` column filled with 0).
+    """
     numeric = pd.to_numeric(series, errors="coerce")
-    return bool(numeric.notna().any())
+    # NaN / missing → 0 so empty and all-zero columns count as 2D placeholders.
+    return bool((numeric.fillna(0) != 0).any())
 
 
 def warn_if_axial_coordinates_present(
@@ -85,9 +90,10 @@ def finalize_loaded_dataframe(
 ) -> pd.DataFrame:
     """Handle axial / unused columns for the 2D release.
 
-    - Axial column **with numeric values** → raise ``AxialDataNotSupportedError``
-      (pipeline must stop; 3D data is not supported).
-    - Axial column present but **empty / all missing** → warn, drop, continue.
+    - Axial column with **non-zero** numeric values → raise
+      ``AxialDataNotSupportedError`` (3D data is not supported).
+    - Axial column **empty / all missing / all zero** → warn, drop, continue
+      (zeros are treated as a 2D export placeholder).
     - ``channelName`` is dropped when present.
     """
     axial_cols = find_axial_columns(df.columns)
@@ -98,14 +104,15 @@ def finalize_loaded_dataframe(
         if cols_with_values:
             raise AxialDataNotSupportedError(
                 "dSTORMQuant currently supports 2D analysis only. "
-                f"Axial column(s) {cols_with_values} in {context} contain numeric "
-                "values (3D localizations). Remove the z column or clear its values "
-                "for a 2D run. Full 3D support is planned for a future release."
+                f"Axial column(s) {cols_with_values} in {context} contain "
+                "non-zero numeric values (3D localizations). Remove the z column "
+                "or clear / zero its values for a 2D run. Full 3D support is "
+                "planned for a future release."
             )
         logger.warning(
             "dSTORMQuant currently supports 2D analysis only. "
-            f"Axial column(s) {axial_cols} in {context} have no numeric values "
-            "and will be dropped."
+            f"Axial column(s) {axial_cols} in {context} are empty or all-zero "
+            "(2D placeholder) and will be dropped."
         )
         df = df.drop(columns=axial_cols)
 
@@ -119,8 +126,9 @@ def load_data(file_path: str | Path) -> pd.DataFrame:
     """
     Load localization data from a CSV file and return a pandas DataFrame.
 
-    The current release analyzes data in 2D. Axial columns with numeric values
-    raise ``AxialDataNotSupportedError``. Empty axial columns are dropped.
+    The current release analyzes data in 2D. Axial columns with non-zero values
+    raise ``AxialDataNotSupportedError``. Empty or all-zero axial columns are
+    dropped (common 2D export placeholder).
 
     Parameters
     ----------

@@ -8,6 +8,7 @@ from pathlib import Path
 from dSTORMQuant.core.config.loader import load_config, load_metadata
 from dSTORMQuant.core.pipeline import process_single_file, setup_directories
 from dSTORMQuant.utils.logger import get_logger
+from dSTORMQuant.utils.run_summary import FileRunRecord, write_batch_run_summary
 
 logger = get_logger()
 
@@ -16,8 +17,9 @@ def main() -> None:
     """Run the dSTORMQuant pipeline on all localization CSVs in the input folder.
 
     Loads configuration and metadata, iterates input files, calls
-    :func:`dSTORMQuant.core.pipeline.process_single_file` for each, then removes
-    the temporary working directory.
+    :func:`dSTORMQuant.core.pipeline.process_single_file` for each, writes a
+    batch ``run_summary`` under ``data/output/``, then removes the temporary
+    working directory.
     """
     logger.info("🚀 Starting dSTORMQuant...")
 
@@ -53,11 +55,11 @@ def main() -> None:
 
     # Process all files
     total_start_time = time.time()
-    statuses: list[str] = []
+    records: list[FileRunRecord] = []
 
     for input_file_name in input_files:
         try:
-            _, status = process_single_file(
+            record = process_single_file(
                 input_file_name,
                 dirs["input_dir"],
                 dirs["output_dir"],
@@ -66,10 +68,16 @@ def main() -> None:
                 config,
                 required_columns,
             )
-            statuses.append(status)
+            records.append(record)
         except Exception as e:
             logger.exception(f"❌ Error during processing {input_file_name}: {e}")
-            statuses.append("failed")
+            records.append(
+                FileRunRecord(
+                    input_file=input_file_name,
+                    status="failed",
+                    reason=str(e),
+                )
+            )
             continue
 
     # Cleanup and final logging
@@ -77,8 +85,12 @@ def main() -> None:
     total_time = time.time() - total_start_time
     logger.info(f"⏱️ Total execution time for all files: {total_time:.2f} seconds")
 
-    n_failed = sum(1 for s in statuses if s == "failed")
-    n_ok = sum(1 for s in statuses if s == "ok")
+    write_batch_run_summary(
+        records, dirs["output_dir"], total_seconds=total_time
+    )
+
+    n_failed = sum(1 for r in records if r.status == "failed")
+    n_ok = sum(1 for r in records if r.status == "ok")
     logger.info("Run summary: %s ok, %s failed.", n_ok, n_failed)
 
     if n_failed:

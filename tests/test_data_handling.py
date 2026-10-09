@@ -29,7 +29,9 @@ def test_axial_column_has_numeric_values() -> None:
     assert axial_column_has_numeric_values(pd.Series([1.0, 2.0])) is True
     assert axial_column_has_numeric_values(pd.Series([float("nan"), None])) is False
     assert axial_column_has_numeric_values(pd.Series(["", None, "nan"])) is False
-    assert axial_column_has_numeric_values(pd.Series([None, 0.0])) is True
+    assert axial_column_has_numeric_values(pd.Series([None, 0.0])) is False
+    assert axial_column_has_numeric_values(pd.Series([0.0, 0.0, 0.0])) is False
+    assert axial_column_has_numeric_values(pd.Series([0.0, 1.0])) is True
 
 
 def test_warn_if_axial_coordinates_present_logs_warning(
@@ -44,7 +46,7 @@ def test_warn_if_axial_coordinates_present_logs_warning(
     assert "z (nm)" in caplog.text
 
 
-def test_load_data_aborts_when_z_has_values(tmp_path: Path) -> None:
+def test_load_data_aborts_when_z_has_nonzero_values(tmp_path: Path) -> None:
     csv_path = tmp_path / "locs_3d.csv"
     pd.DataFrame(
         {
@@ -56,7 +58,7 @@ def test_load_data_aborts_when_z_has_values(tmp_path: Path) -> None:
         }
     ).to_csv(csv_path, index=False)
 
-    with pytest.raises(AxialDataNotSupportedError, match="numeric values"):
+    with pytest.raises(AxialDataNotSupportedError, match="non-zero numeric values"):
         load_data(csv_path)
 
 
@@ -80,7 +82,29 @@ def test_load_data_drops_empty_z_column(
 
     assert "z (nm)" not in df.columns
     assert "channelName" not in df.columns
-    assert "no numeric values" in caplog.text
+    assert "empty or all-zero" in caplog.text
+
+
+def test_load_data_drops_all_zero_z_column(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    csv_path = tmp_path / "locs_zero_z.csv"
+    pd.DataFrame(
+        {
+            "x (nm)": [1.0, 2.0],
+            "y (nm)": [3.0, 4.0],
+            "z (nm)": [0.0, 0.0],
+            "channelIndex": [0, 0],
+            "frameIndex": [1, 2],
+        }
+    ).to_csv(csv_path, index=False)
+
+    with caplog.at_level("WARNING"):
+        df = load_data(csv_path)
+
+    assert "z (nm)" not in df.columns
+    assert "empty or all-zero" in caplog.text
+    assert len(df) == 2
 
 
 def test_load_data_no_warning_without_z(
@@ -104,7 +128,7 @@ def test_load_data_no_warning_without_z(
     assert len(df) == 1
 
 
-def test_load_and_validate_aborts_when_z_has_values(
+def test_load_and_validate_aborts_when_z_has_nonzero_values(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     csv_path = tmp_path / "with_z.csv"
@@ -119,11 +143,12 @@ def test_load_and_validate_aborts_when_z_has_values(
     ).to_csv(csv_path, index=False)
 
     with caplog.at_level("ERROR"):
-        df = load_and_validate_data(str(csv_path), _REQUIRED)
+        df, reason = load_and_validate_data(str(csv_path), _REQUIRED)
 
     assert df is None
+    assert reason is not None
+    assert "non-zero numeric values" in reason
     assert "2D analysis only" in caplog.text
-    assert "numeric values" in caplog.text
 
 
 def test_load_and_validate_drops_empty_z(
@@ -142,12 +167,36 @@ def test_load_and_validate_drops_empty_z(
     ).to_csv(csv_path, index=False)
 
     with caplog.at_level("WARNING"):
-        df = load_and_validate_data(str(csv_path), _REQUIRED)
+        df, reason = load_and_validate_data(str(csv_path), _REQUIRED)
 
+    assert reason is None
     assert df is not None
     assert "z (nm)" not in df.columns
     assert "localization precision (nm)" in df.columns
-    assert "no numeric values" in caplog.text
+    assert "empty or all-zero" in caplog.text
+
+
+def test_load_and_validate_drops_all_zero_z(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    csv_path = tmp_path / "zero_z.csv"
+    pd.DataFrame(
+        {
+            "x (nm)": [1.0],
+            "y (nm)": [2.0],
+            "z (nm)": [0.0],
+            "channelIndex": [0],
+            "frameIndex": [1],
+        }
+    ).to_csv(csv_path, index=False)
+
+    with caplog.at_level("WARNING"):
+        df, reason = load_and_validate_data(str(csv_path), _REQUIRED)
+
+    assert reason is None
+    assert df is not None
+    assert "z (nm)" not in df.columns
+    assert "empty or all-zero" in caplog.text
 
 
 def test_load_and_validate_succeeds_without_z(
@@ -163,7 +212,8 @@ def test_load_and_validate_succeeds_without_z(
         }
     ).to_csv(csv_path, index=False)
 
-    df = load_and_validate_data(str(csv_path), _REQUIRED)
+    df, reason = load_and_validate_data(str(csv_path), _REQUIRED)
+    assert reason is None
     assert df is not None
     assert len(df) == 1
 
@@ -181,8 +231,10 @@ def test_load_and_validate_aborts_when_required_column_missing(
     ).to_csv(csv_path, index=False)
 
     with caplog.at_level("ERROR"):
-        df = load_and_validate_data(str(csv_path), _REQUIRED)
+        df, reason = load_and_validate_data(str(csv_path), _REQUIRED)
 
     assert df is None
+    assert reason is not None
+    assert "Missing required columns" in reason
+    assert "x (nm)" in reason
     assert "Missing required columns" in caplog.text
-    assert "x (nm)" in caplog.text

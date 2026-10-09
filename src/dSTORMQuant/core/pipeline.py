@@ -26,6 +26,7 @@ from dSTORMQuant.processing.cell_detection.cell_detection import (
 )
 from dSTORMQuant.processing.drift_correction.drift import apply_aim_drift
 from dSTORMQuant.processing.filtering.filtering import (
+    FilterStepReport,
     apply_filters,
     write_filtering_report_json,
 )
@@ -39,6 +40,10 @@ from dSTORMQuant.utils.data_handling import (
     load_data,
     read_localization_csv,
     save_df_to_csv,
+)
+from dSTORMQuant.utils.run_summary import (
+    FileRunRecord,
+    filtering_summary_from_reports,
 )
 from dSTORMQuant.utils.logger import get_logger
 from dSTORMQuant.utils.utils import (
@@ -70,10 +75,6 @@ from dSTORMQuant.visualization.visualization import (
 )
 
 logger = get_logger()
-
-# Per-file outcome for main() exit codes: ok | failed
-FileProcessStatus = str
-
 
 def setup_directories(project_root: Path) -> dict[str, Path]:
     """
@@ -121,44 +122,45 @@ def setup_temp_directories(temp_dir: Path) -> None:
 
 def load_and_validate_data(
     input_file_path: str, required_columns: list[str]
-) -> pd.DataFrame | None:
+) -> tuple[pd.DataFrame | None, str | None]:
     """
     Load input CSV, require documented headers, then apply 2D load rules.
 
     Missing required columns abort this file. Axial columns (e.g. ``z (nm)``)
-    with numeric values abort (3D not supported); empty axial columns are dropped.
+    with non-zero values abort (3D not supported); empty or all-zero axial
+    columns are dropped as a 2D placeholder.
 
     Args:
         input_file_path: Path to input CSV file
         required_columns: List of required column names
 
     Returns:
-        Loaded DataFrame or None if validation fails
+        ``(dataframe, None)`` on success, or ``(None, reason)`` on failure.
     """
     logger.info("🔍 Loading localization data...")
     path = Path(input_file_path)
     if not path.exists():
-        logger.error(f"Input file '{input_file_path}' not found.")
-        return None
+        reason = f"Input file '{input_file_path}' not found."
+        logger.error(reason)
+        return None, reason
 
     df = read_localization_csv(path)
     missing = [col for col in required_columns if col not in df.columns]
     if missing:
-        logger.error(
-            "Missing required columns in '%s': %s. "
-            "Rename CSV headers to the documented dSTORMQuant schema before running. "
-            "Required: %s.",
-            path.name,
-            missing,
-            required_columns,
+        reason = (
+            f"Missing required columns in '{path.name}': {missing}. "
+            f"Rename CSV headers to the documented dSTORMQuant schema. "
+            f"Required: {required_columns}."
         )
-        return None
+        logger.error(reason)
+        return None, reason
 
     try:
-        return finalize_loaded_dataframe(df, context=f"'{path.name}'")
+        return finalize_loaded_dataframe(df, context=f"'{path.name}'"), None
     except AxialDataNotSupportedError as e:
-        logger.error("%s", e)
-        return None
+        reason = str(e)
+        logger.error("%s", reason)
+        return None, reason
 
 
 def extract_and_configure_channels(
@@ -495,7 +497,7 @@ def apply_filtering_pipeline(
     input_file_name: str,
     *,
     use_napari: bool = True,
-) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
+) -> tuple[pd.DataFrame, list[dict[str, Any]], list[FilterStepReport]]:
     """
     Apply filtering pipeline and visualize results.
 
@@ -507,7 +509,7 @@ def apply_filtering_pipeline(
         input_file_name: Name of input file
 
     Returns:
-        Tuple of (filtered_df, list of summary statistics)
+        Tuple of (filtered_df, list of summary statistics, filter step reports)
     """
     logger.info("🧼 Filtering data...")
 
@@ -558,7 +560,7 @@ def apply_filtering_pipeline(
         ),
     )
 
-    return final_df, after_filtering_summary_stats
+    return final_df, after_filtering_summary_stats, filter_reports
 
 
 def apply_temporal_grouping(
@@ -1058,7 +1060,7 @@ def process_single_file(
     metadata_df: pd.DataFrame,
     config: dict[str, Any],
     required_columns: list[str],
-) -> tuple[dict[str, float], FileProcessStatus]:
+) -> FileRunRecord:
     """
     Process a single input file through the entire pipeline.
 
@@ -1072,13 +1074,21 @@ def process_single_file(
         required_columns: List of required column names
 
     Returns:
-        Step execution times and status (``ok`` or ``failed``).
+        :class:`~dSTORMQuant.utils.run_summary.FileRunRecord` for the batch summary.
     """
     input_file_path = os.path.join(input_dir, input_file_name)
     logger.info(f"\n📂 Processing {input_file_path}...")
 
     file_start_time = time.time()
-    step_times = {}
+    step_times: dict[str, float] = {}
+
+    def _fail(reason: str) -> FileRunRecord:
+        return FileRunRecord(
+            input_file=input_file_name,
+            status="failed",
+            reason=reason,
+            duration_seconds=time.time() - file_start_time,
+        )
 
     meta_cols = config["data"]["input"]["required_metadata_columns"]
     metadata_row = get_metadata_for_file(
@@ -1095,14 +1105,15 @@ def process_single_file(
         )
 
     if not os.path.exists(input_file_path):
-        logger.error(f"Input file '{input_file_path}' not found.")
-        return step_times, "failed"
+        reason = f"Input file '{input_file_path}' not found."
+        logger.error(reason)
+        return _fail(reason)
 
     # Step 1: Load and validate data
     t0 = time.time()
-    df = load_and_validate_data(input_file_path, required_columns)
+    df, load_error = load_and_validate_data(input_file_path, required_columns)
     if df is None:
-        return step_times, "failed"
+        return _fail(load_error or "Load/validation failed.")
     step_times["load_data"] = time.time() - t0
 
     # Extract and configure channels
@@ -1110,7 +1121,7 @@ def process_single_file(
         df, input_file_name, metadata_row, config, input_dir
     )
     if new_df is None:
-        return step_times, "failed"
+        return _fail("Channel extraction/configuration failed.")
 
     # Step 2: Initial visualization
     t0 = time.time()
@@ -1132,7 +1143,7 @@ def process_single_file(
 
     # Step 4: Filtering
     t0 = time.time()
-    final_df, after_filtering_summary_stats = apply_filtering_pipeline(
+    final_df, after_filtering_summary_stats, filter_reports = apply_filtering_pipeline(
         df_drift_corrected,
         config,
         channels,
@@ -1141,6 +1152,7 @@ def process_single_file(
         use_napari=use_napari,
     )
     step_times["filtering"] = time.time() - t0
+    filter_fields = filtering_summary_from_reports(filter_reports)
 
     # Step 5: Temporal grouping
     t0 = time.time()
@@ -1213,4 +1225,9 @@ def process_single_file(
         logger.info(f"    Step '{step}' took {duration:.2f} seconds")
 
     logger.info(f"✅ Completed {input_file_name} successfully.")
-    return step_times, "ok"
+    return FileRunRecord(
+        input_file=input_file_name,
+        status="ok",
+        duration_seconds=file_total_time,
+        **filter_fields,
+    )

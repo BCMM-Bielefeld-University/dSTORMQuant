@@ -9,8 +9,8 @@
 data:
   input:
     file_format: "csv"  # Format of input files. Options: csv
-    # Current release is 2D-only.
-    # Columns that needs to be present on csv file.
+    # Current release is 2D-only. These headers must exist or the file fails load.
+    # Quality columns (sigmaX/Y, intensity, etc.) are optional: missing ones skipW
     required_columns:
       - "x (nm)"
       - "y (nm)"

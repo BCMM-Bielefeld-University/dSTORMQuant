@@ -40,6 +40,8 @@ def test_apply_filters_skips_missing_measurement_columns(
     assert applied["after_pvalue_filter"] is False
     assert len(results["after_pvalue_filter"]) == 2
     assert any(r.skipped_missing_columns for r in reports)
+    sigma_report = next(r for r in reports if r.step_name == "sigma_filter")
+    assert sigma_report.expected_csv_columns == ("sigmaX (nm)", "sigmaY (nm)")
 
 
 def test_apply_filters_skips_disabled_steps(

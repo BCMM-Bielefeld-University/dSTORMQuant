@@ -26,7 +26,7 @@ import yaml as _yaml
 
 from dSTORMQuant.utils.data_handling import (
     read_localization_csv,
-    warn_if_axial_coordinates_present,
+    finalize_loaded_dataframe,
 )
 from scipy.interpolate import make_interp_spline
 from tqdm import tqdm as tqdm
@@ -1038,8 +1038,9 @@ def csv2hdf(path, pixelsize, sanity_config=None):
         Exception: Re-raised when required columns cannot be parsed.
     """
     data = read_localization_csv(path)
-    warn_if_axial_coordinates_present(
-        data.columns,
+    # Abort if z has numeric values; drop empty axial columns (2D release).
+    data = finalize_loaded_dataframe(
+        data,
         context=f"CSV→HDF conversion of '{_ospath.basename(str(path))}'",
     )
     try:
@@ -1053,66 +1054,44 @@ def csv2hdf(path, pixelsize, sanity_config=None):
         arrays = [frames, x, y]
         dtype = [("frame", "u4"), ("x", "f4"), ("y", "f4")]
 
-        _PHOTON_COLS = (
-            "intensity (photons)",
-            "intensity (photon)",
-            "intensity",
-            "photons",
-        )
-        _SX_COLS = ("sigmaX (nm)", "sigmaX", "sx")
-        _SY_COLS = ("sigmaY (nm)", "sigmaY", "sy")
-        _ISO_SIGMA_COLS = ("sigma [nm]", "sigma (nm)", "sigma")
+        # Optional quality columns: exact documented NimOS-style headers only.
+        # Rename ThunderSTORM / other exports before placing files in data/input/.
 
         # photons / intensity
-        if any(name in data.columns for name in _PHOTON_COLS):
-            photons = _csv_numeric_column(data, _PHOTON_COLS, default=_np.nan)
+        if "intensity (photons)" in data.columns:
+            photons = _csv_numeric_column(
+                data, ("intensity (photons)",), default=_np.nan
+            )
             arrays.append(photons)
             dtype.append(("photons", "f4"))
 
-        added_sx = False
-        added_sy = False
-
         # sx
-        if any(name in data.columns for name in _SX_COLS):
-            sx = _csv_numeric_column(data, _SX_COLS, default=_np.nan) / pixelsize
-            arrays.append(sx)
-            dtype.append(("sx", "f4"))
-            added_sx = True
-
-        # sy
-        if any(name in data.columns for name in _SY_COLS):
-            sy = _csv_numeric_column(data, _SY_COLS, default=_np.nan) / pixelsize
-            arrays.append(sy)
-            dtype.append(("sy", "f4"))
-            added_sy = True
-
-        # isotropic sigma (e.g. ThunderSTORM ``sigma [nm]``)
-        if not added_sx and not added_sy and any(
-            name in data.columns for name in _ISO_SIGMA_COLS
-        ):
-            sigma_px = (
-                _csv_numeric_column(data, _ISO_SIGMA_COLS, default=_np.nan)
+        if "sigmaX (nm)" in data.columns:
+            sx = (
+                _csv_numeric_column(data, ("sigmaX (nm)",), default=_np.nan)
                 / pixelsize
             )
-            arrays.append(sigma_px)
+            arrays.append(sx)
             dtype.append(("sx", "f4"))
-            arrays.append(sigma_px.copy())
+
+        # sy
+        if "sigmaY (nm)" in data.columns:
+            sy = (
+                _csv_numeric_column(data, ("sigmaY (nm)",), default=_np.nan)
+                / pixelsize
+            )
+            arrays.append(sy)
             dtype.append(("sy", "f4"))
 
         # bg
-        if any(
-            name in data.columns
-            for name in ("background (photons/nm^2)", "bg", "background")
-        ):
+        if "background (photons/nm^2)" in data.columns:
             bg = _csv_numeric_column(
-                data,
-                ("background (photons/nm^2)", "bg", "background"),
-                default=_np.nan,
+                data, ("background (photons/nm^2)",), default=_np.nan
             )
             arrays.append(bg)
             dtype.append(("bg", "f4"))
 
-        # p-value
+        # p-value (NimOS uses ``p-value``; ``pvalue`` also accepted)
         if any(name in data.columns for name in ("p-value", "pvalue")):
             p_value = _csv_numeric_column(
                 data, ("p-value", "pvalue"), default=_np.nan
@@ -1126,15 +1105,10 @@ def csv2hdf(path, pixelsize, sanity_config=None):
         dtype.append(("channelIndex", "u4"))
 
         # lp
-        _LP_COLS = (
-            "localization precision (nm)",
-            "uncertainty [nm]",
-            "uncertainty (nm)",
-            "lp",
-            "localization_precision",
-        )
-        if any(name in data.columns for name in _LP_COLS):
-            lp = _csv_numeric_column(data, _LP_COLS, default=_np.nan)
+        if "localization precision (nm)" in data.columns:
+            lp = _csv_numeric_column(
+                data, ("localization precision (nm)",), default=_np.nan
+            )
             arrays.append(lp)
             dtype.append(("lp", "f4"))
 

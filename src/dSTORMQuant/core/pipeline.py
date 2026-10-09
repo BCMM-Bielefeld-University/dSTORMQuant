@@ -33,7 +33,13 @@ from dSTORMQuant.processing.filtering.temporal_grouping import (
     duration_filtering,
     run_spatiotemporal_grouping,
 )
-from dSTORMQuant.utils.data_handling import load_data, save_df_to_csv
+from dSTORMQuant.utils.data_handling import (
+    AxialDataNotSupportedError,
+    finalize_loaded_dataframe,
+    load_data,
+    read_localization_csv,
+    save_df_to_csv,
+)
 from dSTORMQuant.utils.logger import get_logger
 from dSTORMQuant.utils.utils import (
     append_clustering_summary_stats,
@@ -117,7 +123,10 @@ def load_and_validate_data(
     input_file_path: str, required_columns: list[str]
 ) -> pd.DataFrame | None:
     """
-    Load data and validate required columns exist.
+    Load input CSV, require documented headers, then apply 2D load rules.
+
+    Missing required columns abort this file. Axial columns (e.g. ``z (nm)``)
+    with numeric values abort (3D not supported); empty axial columns are dropped.
 
     Args:
         input_file_path: Path to input CSV file
@@ -127,14 +136,29 @@ def load_and_validate_data(
         Loaded DataFrame or None if validation fails
     """
     logger.info("🔍 Loading localization data...")
-    df = load_data(input_file_path)
-
-    missing = [col for col in required_columns if col not in df.columns]
-    if missing:
-        logger.error(f"Missing required columns: {missing}")
+    path = Path(input_file_path)
+    if not path.exists():
+        logger.error(f"Input file '{input_file_path}' not found.")
         return None
 
-    return df
+    df = read_localization_csv(path)
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        logger.error(
+            "Missing required columns in '%s': %s. "
+            "Rename CSV headers to the documented dSTORMQuant schema before running. "
+            "Required: %s.",
+            path.name,
+            missing,
+            required_columns,
+        )
+        return None
+
+    try:
+        return finalize_loaded_dataframe(df, context=f"'{path.name}'")
+    except AxialDataNotSupportedError as e:
+        logger.error("%s", e)
+        return None
 
 
 def extract_and_configure_channels(

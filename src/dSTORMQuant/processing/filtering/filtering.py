@@ -12,6 +12,39 @@ from dSTORMQuant.utils.logger import get_logger
 
 logger = get_logger()
 
+# Internal post-drift field -> exact CSV header(s) users must provide.
+_CSV_HEADERS_FOR_INTERNAL: dict[str, tuple[str, ...]] = {
+    "sx": ("sigmaX (nm)",),
+    "sy": ("sigmaY (nm)",),
+    "photons": ("intensity (photons)",),
+    "lp": ("localization precision (nm)",),
+    "pvalue": ("p-value", "pvalue"),
+}
+
+
+def _expected_csv_headers(internal_columns: tuple[str, ...]) -> tuple[str, ...]:
+    """Map internal filter columns to documented input CSV header names."""
+    headers: list[str] = []
+    for col in internal_columns:
+        headers.extend(_CSV_HEADERS_FOR_INTERNAL.get(col, (col,)))
+    return tuple(headers)
+
+
+def _warn_filter_skipped_for_column_names(
+    step_label: str,
+    expected_csv_headers: tuple[str, ...],
+) -> None:
+    """Log why a filter was skipped: CSV headers must match the documented schema."""
+    named = ", ".join(f"'{h}'" for h in expected_csv_headers)
+    logger.warning(
+        "%s skipped: required quality column(s) not found after drift correction. "
+        "Reason: input CSV header names must match the documented dSTORMQuant schema "
+        "exactly (expected: %s). Rename your export columns to these names and re-run. "
+        "See filtering_report.json in test_data/.",
+        step_label,
+        named,
+    )
+
 
 @dataclass(frozen=True)
 class FilterStepReport:
@@ -19,7 +52,7 @@ class FilterStepReport:
     enabled: bool
     applied: bool
     skipped_missing_columns: bool
-    required_columns: tuple[str, ...] = ()
+    expected_csv_columns: tuple[str, ...] = ()
 
 
 def _filter_step_enabled(step_cfg: dict[str, Any]) -> bool:
@@ -69,15 +102,18 @@ def apply_filters(
     ) -> None:
         applied[step_key] = did_apply
         step_name = step_key.removeprefix("after_")
+        expected_csv = _expected_csv_headers(required)
         reports.append(
             FilterStepReport(
                 step_name=step_name,
                 enabled=enabled,
                 applied=did_apply,
                 skipped_missing_columns=skipped_missing_columns,
-                required_columns=required,
+                expected_csv_columns=expected_csv,
             )
         )
+        if skipped_missing_columns:
+            _warn_filter_skipped_for_column_names(step_name, expected_csv)
 
     # --- Sigma ---
     sigma_cfg = filtering["sigma"]
@@ -111,9 +147,6 @@ def apply_filters(
             did_apply=True,
         )
     else:
-        logger.warning(
-            "Sigma filter requires columns sx/sy, which are missing; skipping sigma filter."
-        )
         _finish_step(
             "after_sigma_filter",
             True,
@@ -151,9 +184,6 @@ def apply_filters(
             did_apply=True,
         )
     else:
-        logger.warning(
-            "Photon count filter requires column photons, which is missing; skipping photon filter."
-        )
         _finish_step(
             "after_photons_count_filter",
             True,
@@ -193,10 +223,6 @@ def apply_filters(
             did_apply=True,
         )
     else:
-        logger.warning(
-            "Localization precision filter requires column lp, which is missing; "
-            "skipping localization precision filter."
-        )
         _finish_step(
             "after_localization_precision_filter",
             True,
@@ -233,9 +259,6 @@ def apply_filters(
             did_apply=True,
         )
     else:
-        logger.warning(
-            "P-value filter requires column pvalue, which is missing; skipping p-value filter."
-        )
         _finish_step(
             "after_pvalue_filter",
             True,
@@ -267,7 +290,11 @@ def log_filtering_summary(
         elif r.applied:
             status = "applied"
         elif r.skipped_missing_columns:
-            status = f"NOT APPLIED — missing columns {list(r.required_columns)}"
+            expected = ", ".join(f"'{h}'" for h in r.expected_csv_columns)
+            status = (
+                "NOT APPLIED — CSV headers must match documented names "
+                f"(expected: {expected})"
+            )
         else:
             status = "not applied"
         lines.append(f"  - {r.step_name}: {status}")
@@ -277,8 +304,11 @@ def log_filtering_summary(
     if any_missing_column_skips:
         logger.warning(
             "%s\n"
-            "Some enabled filters were skipped (missing quality columns after "
-            "drift correction). Details in filtering_report.json under test_data/.",
+            "Reason: one or more enabled filters were skipped because the input "
+            "CSV did not use the documented quality column names "
+            "(e.g. 'sigmaX (nm)', 'sigmaY (nm)', 'intensity (photons)', "
+            "'localization precision (nm)', 'p-value'). Rename columns to match "
+            "exactly, then re-run. Details in filtering_report.json under test_data/.",
             msg,
         )
     else:

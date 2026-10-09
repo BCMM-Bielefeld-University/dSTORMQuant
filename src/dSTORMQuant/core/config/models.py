@@ -35,9 +35,9 @@ class InputDataConfig(BaseModel):
         ...,
         min_length=1,
         description=(
-            "Localization CSV columns validated at load (see docs). "
-            "Minimum is typically x (nm), y (nm), channelIndex, frameIndex; "
-            "quality metrics may be optional and filled for drift conversion when absent."
+            "Exact localization CSV headers required at load (default: x (nm), "
+            "y (nm), channelIndex, frameIndex). Missing any aborts that file. "
+            "Quality columns are optional; missing ones skip the matching filter."
         ),
     )
     xlsx_filename: str = Field(..., description="Metadata Excel filename")

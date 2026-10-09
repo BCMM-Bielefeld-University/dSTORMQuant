@@ -22,6 +22,10 @@ _AXIAL_COLUMN_CANDIDATES = (
 )
 
 
+class AxialDataNotSupportedError(ValueError):
+    """Raised when the CSV contains axial coordinates with numeric values (3D data)."""
+
+
 def read_localization_csv(file_path: str | Path) -> pd.DataFrame:
     """Read a localization CSV using pandas' default (C) parser."""
     return pd.read_csv(Path(file_path))
@@ -47,12 +51,18 @@ def find_axial_columns(columns: pd.Index | list[str]) -> list[str]:
     return found
 
 
+def axial_column_has_numeric_values(series: pd.Series) -> bool:
+    """Return True if the series has any non-missing numeric values."""
+    numeric = pd.to_numeric(series, errors="coerce")
+    return bool(numeric.notna().any())
+
+
 def warn_if_axial_coordinates_present(
     columns: pd.Index | list[str],
     *,
     context: str = "input data",
 ) -> list[str]:
-    """Warn when axial coordinates are present but will not be used (2D-only pipeline).
+    """Warn when axial coordinate columns are present (names only; no value check).
 
     Args:
         columns: Column names to inspect.
@@ -65,19 +75,52 @@ def warn_if_axial_coordinates_present(
     if axial_cols:
         logger.warning(
             "dSTORMQuant currently supports 2D analysis only. "
-            f"Axial coordinate column(s) {axial_cols} were found in {context} and "
-            "will be ignored; localizations are analyzed as a 2D (x–y) projection. "
-            "Full 3D support is planned for a future release."
+            f"Axial coordinate column(s) {axial_cols} were found in {context}."
         )
     return axial_cols
+
+
+def finalize_loaded_dataframe(
+    df: pd.DataFrame, *, context: str
+) -> pd.DataFrame:
+    """Handle axial / unused columns for the 2D release.
+
+    - Axial column **with numeric values** → raise ``AxialDataNotSupportedError``
+      (pipeline must stop; 3D data is not supported).
+    - Axial column present but **empty / all missing** → warn, drop, continue.
+    - ``channelName`` is dropped when present.
+    """
+    axial_cols = find_axial_columns(df.columns)
+    if axial_cols:
+        cols_with_values = [
+            c for c in axial_cols if axial_column_has_numeric_values(df[c])
+        ]
+        if cols_with_values:
+            raise AxialDataNotSupportedError(
+                "dSTORMQuant currently supports 2D analysis only. "
+                f"Axial column(s) {cols_with_values} in {context} contain numeric "
+                "values (3D localizations). Remove the z column or clear its values "
+                "for a 2D run. Full 3D support is planned for a future release."
+            )
+        logger.warning(
+            "dSTORMQuant currently supports 2D analysis only. "
+            f"Axial column(s) {axial_cols} in {context} have no numeric values "
+            "and will be dropped."
+        )
+        df = df.drop(columns=axial_cols)
+
+    if "channelName" in df.columns:
+        df = df.drop(columns=["channelName"])
+
+    return df
 
 
 def load_data(file_path: str | Path) -> pd.DataFrame:
     """
     Load localization data from a CSV file and return a pandas DataFrame.
 
-    The current release analyzes data in 2D. If axial coordinates are present
-    (e.g. ``z (nm)``), a warning is emitted and those columns are dropped.
+    The current release analyzes data in 2D. Axial columns with numeric values
+    raise ``AxialDataNotSupportedError``. Empty axial columns are dropped.
 
     Parameters
     ----------
@@ -95,18 +138,7 @@ def load_data(file_path: str | Path) -> pd.DataFrame:
         raise FileNotFoundError(f"File not found: {file_path}")
 
     df: pd.DataFrame = read_localization_csv(file_path)
-
-    axial_cols = warn_if_axial_coordinates_present(
-        df.columns, context=f"'{file_path.name}'"
-    )
-    if axial_cols:
-        df = df.drop(columns=axial_cols)
-
-    # Optional non-coordinate column sometimes present in NimOS exports
-    if "channelName" in df.columns:
-        df = df.drop(columns=["channelName"])
-
-    return df
+    return finalize_loaded_dataframe(df, context=f"'{file_path.name}'")
 
 
 def save_df_to_csv(

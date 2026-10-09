@@ -1,7 +1,7 @@
 # dSTORMQuant: A Python Package for postprocessing and quantitative analysis of SMLM datasets
 
 [![CI](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/actions/workflows/ci-cd.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![GitHub release](https://img.shields.io/github/v/release/BCMM-Bielefeld-University/dSTORMQuant)](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/releases)

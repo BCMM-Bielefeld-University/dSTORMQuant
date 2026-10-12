@@ -259,12 +259,16 @@ dSTORMQuant is maintained by the Biochemistry and Molecular Medicine group
 (Medical School OWL, Bielefeld University) and developed as an open-source
 project on GitHub.
 
+When adapting third-party algorithms, update [ATTRIBUTION.md](ATTRIBUTION.md) and
+the relevant module file header (see existing AIM, CBC, RE, and FINDER notes).
+
 Future goals:
 
 - Expand automated unit and integration tests
 - Extending input parsing to additional SMLM software export formats (e.g. ThunderSTORM or NimOS column layouts) based on user needs
 - Adding further analysis methods for individual pipeline stages (e.g., clustering and drift correction)
-- Full 3D localization support (current release is 2D-only; axial columns are ignored with an explicit warning)
+- Full 3D localization support (current release is 2D-only; non-zero axial values abort load; empty/all-zero z is dropped)
+- Numerical validation of adapted/ported algorithms against upstream implementations (see ATTRIBUTION.md)
 
 Bug reports, feature requests, and pull requests via GitHub are the preferred
 channels for community involvement.

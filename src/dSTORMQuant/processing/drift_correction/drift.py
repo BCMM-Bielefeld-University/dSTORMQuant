@@ -1,3 +1,10 @@
+"""Per-file AIM drift-correction driver for the dSTORMQuant pipeline.
+
+Wraps adapted Picasso AIM (`AIM.py`): CSV→HDF5, optional sanity filters,
+optional segment validation, then HDF5→CSV. Dual-channel cumulative drift
+transfer is applied in `core/pipeline.py`, not here. See `ATTRIBUTION.md`.
+"""
+
 import os
 from pathlib import Path
 from typing import Any

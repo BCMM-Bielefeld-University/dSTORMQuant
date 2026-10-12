@@ -1,18 +1,29 @@
 """
-picasso.aim
-~~~~~~~~~~~
+AIM drift correction — adapted from Picasso `picasso.aim`.
 
-Picasso implementation of Adaptive Intersection Maximization (AIM)
-for fast undrifting in 2D and 3D.
+Algorithm
+    Adaptive Intersection Maximization (AIM): Ma et al., Science Advances, 2024.
+Upstream
+    Picasso (Schnitzbauer et al., 2017), Jungmann Lab, MPI of Biochemistry.
+    Original authors of this AIM module: Hongqiang Ma, Maomao Chen, Phuong Nguyen,
+    Yang Liu, Rafal Kowalewski, 2024.
+Copyright
+    Copyright (c) 2016-2024 Jungmann Lab, MPI of Biochemistry.
+    See repository THRID-PARTY LICENSE.txt / Picasso notices.
 
-Adapted from: Ma, H., et al. Science Advances. 2024.
+dSTORMQuant adaptations (Suraj Karki, Bielefeld University)
+    - CSV/HDF5 I/O and logging for this pipeline's localization schema
+    - Optional localization sanity filters before AIM
+    - Optional segment drift validation/replacement (see validate_and_replace_drift)
+    Dual-channel registration (independent undrift + cumulative Ch1→Ch2 drift
+    transfer) lives in core/pipeline.py, not in the AIM core loop.
 
-:author: Hongqiang Ma, Maomao Chen, Phuong Nguyen, Yang Liu,
-    Rafal Kowalewski, 2024
-:copyright: Copyright (c) 2016-2024 Jungmann Lab, MPI of Biochemistry
+Effect on results
+    Core AIM undrift is intended to follow Picasso for a single channel when
+    drift validation is disabled. Segment validation and dual-channel transfer
+    are pipeline-specific and can change coordinates vs Picasso alone.
 
-
-Modified by: Suraj Karki
+Full change log: ATTRIBUTION.md.
 """
 
 import os
@@ -46,6 +57,10 @@ def validate_and_replace_drift(
     """
     Validate segment drift values and replace unrealistic ones with the mean
     of previous N valid segments based on relative displacements.
+
+    dSTORMQuant addition (not in upstream Picasso AIM): optional post-AIM
+    QC when ``drift_correction.drift_validation.use`` is true. Can change the
+    drift trace vs unmodified Picasso. See ``ATTRIBUTION.md``.
 
     Parameters
     ----------
@@ -704,7 +719,7 @@ def aim(
     relative_drift_x = rel_drift_x1 + rel_drift_x2
     relative_drift_y = rel_drift_y1 + rel_drift_y2
 
-    # Apply drift validation if enabled
+    # dSTORMQuant: optional segment QC (pipeline addition; see ATTRIBUTION.md)
     n_replaced = 0
     logger.info(f"INFO: drift_validation_config = {drift_validation_config}")
     if drift_validation_config and drift_validation_config.get("use"):
@@ -1024,7 +1039,11 @@ def _csv_numeric_column(
 
 
 def csv2hdf(path, pixelsize, sanity_config=None):
-    """Convert a Picasso-style localization CSV to HDF5 for AIM drift correction.
+    """Convert a localization CSV to HDF5 for AIM drift correction.
+
+    dSTORMQuant I/O adapter around the Picasso AIM HDF5 layout (see
+    `ATTRIBUTION.md`). Maps documented CSV quality headers onto internal
+    field names when present.
 
     Args:
         path: Input CSV path; output is ``<stem>_locs.hdf5`` beside the input.

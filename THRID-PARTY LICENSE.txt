@@ -5,6 +5,10 @@ THIRD-PARTY LICENSE NOTICES
 This software uses the following third-party packages. Their licenses are
 listed below.
 
+For a plain-language summary of which published algorithms/code bases dSTORMQuant
+reuses or adapts, what was changed, and whether results may differ from upstream,
+see ATTRIBUTION.md in the repository root. Module file headers also point there.
+
 --------------------------------------------------------------------------------
 1. locan >= 0.20.0
 

@@ -394,7 +394,9 @@ def apply_drift_correction(
         )
         df_ch2_drift_corrected = load_data(undrift_df_ch2_path)
 
-        # Calculate and apply cumulative Ch1 drift to Ch2
+        # dSTORMQuant dual-channel registration:
+        # each channel is undrifted independently above; subtract cumulative Ch1
+        # drift from Ch2 so both channels share a common coordinate frame.
         logger.info(
             "Step 3: Calculating cumulative Ch1 drift and subtracting from Ch2..."
         )

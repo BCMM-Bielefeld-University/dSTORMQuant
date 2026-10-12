@@ -1,6 +1,11 @@
-// Port of FINDER (MIT, Copyright (c) 2021 Andreas Nold)
-// C++ implementation Copyright (c) 2026 Suraj Karki, Biochemistry and Molecular Medicine — Medical School OWL, Bielefeld University
-// SPDX-License-Identifier: MIT — see finder_cpp/LICENSE and https://github.com/NoldAndreas/FINDER
+// FINDER C++ port + Python bindings
+// Algorithm: Verzelli et al., Sci Rep 2022. Upstream Python: NoldAndreas/FINDER
+//   (MIT, Copyright (c) 2021 Andreas Nold).
+// This port: Copyright (c) 2026 Suraj Karki, Biochemistry and Molecular Medicine —
+//   Medical School OWL, Bielefeld University.
+// SPDX-License-Identifier: MIT — see finder_cpp/LICENSE
+// Provenance / validation status: repository ATTRIBUTION.md (FINDER section).
+// Equivalence with the original Python FINDER is a tracked validation goal.
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>

@@ -1,3 +1,10 @@
+"""Clustering backends for dSTORMQuant.
+
+- DBSCAN / HDBSCAN: scikit-learn library calls.
+- FINDER: optional C++ port of Verzelli et al. (2022) / Nold FINDER Python
+  code via `finder_cpp` bindings — see `ATTRIBUTION.md` and `finder_cpp/`.
+"""
+
 import json
 import os
 from typing import Any
@@ -25,7 +32,11 @@ def cluster_with_finder(
     decay: float = 0.5,
 ) -> dict:
     """
-    Run the FINDER algorithm on 2D localization data using native C++ bindings.
+    Run FINDER on 2D localizations via the dSTORMQuant C++ port (`finder_cpp`).
+
+    Upstream algorithm: Verzelli et al., Sci Rep 2022; original Python:
+    https://github.com/NoldAndreas/FINDER. This binding does not claim
+    verified numerical equivalence yet — see `ATTRIBUTION.md`.
 
     Parameters
     ----------
@@ -59,6 +70,7 @@ def cluster_with_finder(
 
         coordinates_float32 = coordinates.astype(np.float32, copy=False)
         results = {}
+        # C++ port entry point
         results: dict = finder_cpp.run_finder_2d(
             coordinates_float32,
             threshold=int(threshold),

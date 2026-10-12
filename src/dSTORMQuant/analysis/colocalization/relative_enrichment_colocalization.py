@@ -1,3 +1,10 @@
+"""Pipeline wrapper around Ejdrup relative-enrichment (`RE_function`).
+
+Calls upstream `relative_enrichment` for neighbor/area statistics, then applies
+dSTORMQuant-specific expected-count normalization, bidirectional channel
+orchestration, and plot/CSV export. See `ATTRIBUTION.md`.
+"""
+
 import os
 from typing import Dict, List, Optional
 import numpy as np
@@ -37,9 +44,10 @@ def process_direction(
     coords_primary = coords[primary_idx]
     coords_reference = coords[reference_idx]
 
+    # Upstream Ejdrup core (RE_function.relative_enrichment)
     n_points, area_vals, _, bool_index = relative_enrichment(coords_primary, coords_reference)
 
-    # Calculate relative enrichment
+    # dSTORMQuant wrapper: FOV-normalized expected counts for reported RE values
     n_exp: np.ndarray = n_points / (coords_reference.shape[0] * area_vals / (max(df['x']) - min(df['x']))**2)
     n_exp[np.isinf(n_exp)] = 0.1
     n_exp[n_exp == 0] = 0.1

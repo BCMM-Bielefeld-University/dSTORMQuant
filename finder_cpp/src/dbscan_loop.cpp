@@ -1,6 +1,6 @@
-// Port of FINDER (MIT, Copyright (c) 2021 Andreas Nold)
-// C++ implementation Copyright (c) 2026 Suraj Karki, Biochemistry and Molecular Medicine — Medical School OWL, Bielefeld University
-// SPDX-License-Identifier: MIT — see finder_cpp/LICENSE and https://github.com/NoldAndreas/FINDER
+﻿// FINDER C++ port. Upstream: NoldAndreas/FINDER (MIT, Copyright (c) 2021 Andreas Nold).
+// Port: Copyright (c) 2026 Suraj Karki, Biochemistry and Molecular Medicine — Medical School OWL, Bielefeld University.
+// SPDX-License-Identifier: MIT — see finder_cpp/LICENSE. Provenance: repository ATTRIBUTION.md.
 
 #include "dbscan_loop.hpp"
 #include <algorithm>

@@ -1,3 +1,11 @@
+"""Coordinate-based colocalization (CBC) via the `locan` library.
+
+Algorithm: Malkusch et al., 2012. Implementation: locan
+`CoordinateBasedColocalization` (Doose / LOCAN, 2022). This module is a thin
+wrapper (column rename, bidirectional orchestration, plot packaging) — it does
+**not** reimplement CBC. See `ATTRIBUTION.md`.
+"""
+
 from typing import Any
 
 import locan as lc
@@ -29,7 +37,7 @@ def compute_coordinate_based_colocalization(
         ``coordinates``, ``cbc_values``, and ``color`` for plotting. Empty if a
         channel has no localizations.
     """
-    # Rename for locan compatibility
+    # Wrapper only: locan expects position_x / position_y
     localizations_df = localizations_df.rename(
         columns={"x": "position_x", "y": "position_y"}
     )
@@ -62,7 +70,7 @@ def compute_coordinate_based_colocalization(
         label_primary, label_reference = channel_labels[i], channel_labels[1 - i]
         color_primary = channel_colors[i]
 
-        # Compute coordinate-based colocalization (CBC)
+        # CBC scores computed by locan
         cbc_result = lc.CoordinateBasedColocalization(
             radius=radius, n_steps=n_steps
         ).compute(locdata=locdata_primary, other_locdata=locdata_reference)

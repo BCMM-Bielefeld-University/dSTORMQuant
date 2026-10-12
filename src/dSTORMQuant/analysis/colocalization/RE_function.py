@@ -19,6 +19,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+#
+# Relative enrichment (RE) core functions — Ejdrup et al., Nat Commun 2022
+# (doi:10.1038/s41467-022-32064-y). Integrated into dSTORMQuant with pipeline
+# I/O and dual-channel orchestration in relative_enrichment_colocalization.py.
+# Core estimators in this file are upstream logic; see ATTRIBUTION.md.
+
+"""Relative enrichment helpers from Ejdrup et al. (MIT); see module comment block."""
 
 from itertools import compress
 

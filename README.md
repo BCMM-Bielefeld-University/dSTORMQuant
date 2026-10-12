@@ -31,6 +31,8 @@ dSTORMQuant is a comprehensive, modular Python tool for processing, filtering, d
 - A complete documentation of the project can be found inside the `docs/` directory.
 - Contribution guide: [CONTRIBUTION.md](CONTRIBUTION.md)
 - Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Third-party algorithms and adaptations: [ATTRIBUTION.md](ATTRIBUTION.md)
+- Third-party license texts: [THRID-PARTY LICENSE.txt](THRID-PARTY%20LICENSE.txt)
 
 ---
 

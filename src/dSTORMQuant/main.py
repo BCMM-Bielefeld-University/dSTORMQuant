@@ -37,6 +37,12 @@ def main() -> None:
 
     # Get input files
     required_columns = config["data"]["input"]["required_columns"]
+    optional_quality = config["data"]["input"].get("optional_quality_columns") or []
+    if optional_quality:
+        logger.info(
+            "Optional quality CSV columns (missing ones skip matching filters): %s",
+            ", ".join(f"'{c}'" for c in optional_quality),
+        )
     input_file_format = config["data"]["input"]["file_format"]
     ch_suffix_re = re.compile(
         r"_ch\d+\." + re.escape(input_file_format) + r"$", re.IGNORECASE

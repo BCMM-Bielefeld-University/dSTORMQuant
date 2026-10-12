@@ -68,18 +68,17 @@ def create_stacked_napari_images(
     images = []
 
     steps = [
-        ("napari_view_initial.png", "0. Initial"),
-        ("napari_view_after_drift_correction.png", "1. After Drift Correction"),
-        ("napari_view_after_filtering.png", "2. After Filter"),
-        ("napari_view_after_temporal_grouping.png", "3. After Temporal Grouping"),
+        ("napari_view_initial.png", "Initial"),
+        ("napari_view_after_drift_correction.png", "After Drift Correction"),
+        ("napari_view_after_filtering.png", "After Filter"),
+        ("napari_view_after_temporal_grouping.png", "After Temporal Grouping"),
     ]
 
     if IS_CELL_DETECTION:
-        steps.append(
-            ("napari_view_after_cell_detection.png", "4. After Cell Detection")
-        )
+        steps.append(("napari_view_after_cell_detection.png", "After Cell Detection"))
 
-    for filename, title in steps:
+    step_index = 0
+    for filename, label in steps:
         path = os.path.join(output_folder, filename)
         if not os.path.exists(path):
             logger.warning(f"⚠️ Skipping: {path} (not found)")
@@ -90,6 +89,9 @@ def create_stacked_napari_images(
         except Exception as e:
             logger.warning(f"❌ Failed to open {path}: {e}")
             continue
+
+        title = f"{step_index}. {label}"
+        step_index += 1
 
         title_bar_height = 50
         label_img = Image.new("RGB", (img.width, title_bar_height), (255, 255, 255))

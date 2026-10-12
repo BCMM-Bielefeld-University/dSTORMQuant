@@ -24,6 +24,16 @@ OPTIONAL_METADATA_KEYS = frozenset(
     }
 )
 
+# Documented NimOS-style quality headers (filters skip if absent).
+DEFAULT_OPTIONAL_QUALITY_COLUMNS: list[str] = [
+    "background (photons/nm^2)",
+    "sigmaX (nm)",
+    "sigmaY (nm)",
+    "intensity (photons)",
+    "localization precision (nm)",
+    "p-value",
+]
+
 
 class InputDataConfig(BaseModel):
     """Input data configuration."""
@@ -38,6 +48,14 @@ class InputDataConfig(BaseModel):
             "Exact localization CSV headers required at load (default: x (nm), "
             "y (nm), channelIndex, frameIndex). Missing any aborts that file. "
             "Quality columns are optional; missing ones skip the matching filter."
+        ),
+    )
+    optional_quality_columns: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_OPTIONAL_QUALITY_COLUMNS),
+        description=(
+            "Documented optional quality CSV headers (NimOS-style). Not required "
+            "at load; missing columns skip the matching filter. Listed so users "
+            "know which names to provide or rename to before a run."
         ),
     )
     xlsx_filename: str = Field(..., description="Metadata Excel filename")
@@ -80,6 +98,29 @@ class InputDataConfig(BaseModel):
         if not all(isinstance(c, str) and c for c in v):
             raise ValueError(
                 "required_columns must be a non-empty list of non-empty strings"
+            )
+        return v
+
+    @field_validator("optional_quality_columns")
+    @classmethod
+    def validate_optional_quality_columns(cls, v):
+        """Ensure optional quality column names are non-empty strings.
+
+        Args:
+            cls: Validator class (unused).
+            v: ``optional_quality_columns`` value from the model.
+
+        Returns:
+            Validated list of column names.
+
+        Raises:
+            ValueError: If any entry is not a non-empty string.
+        """
+        if not isinstance(v, list):
+            raise ValueError("optional_quality_columns must be a list of strings")
+        if not all(isinstance(c, str) and c for c in v):
+            raise ValueError(
+                "optional_quality_columns must be a list of non-empty strings"
             )
         return v
 

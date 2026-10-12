@@ -13,7 +13,7 @@ dSTORMQuant is a comprehensive, modular Python tool for processing, filtering, d
 
 **Current release:** analysis is **2D (x–y) only**. If `z (nm)` (or another axial header) contains **non-zero** numeric values, load **aborts** that file—do not upload 3D localizations. If the z column is **empty, all missing, or all zero** (common 2D export placeholder), it is dropped with a warning and the 2D run continues. Full 3D support is planned for a future release.
 
-**CSV schema:** use the documented headers (rename exports into `data/input/` as needed). Missing **geometry/index** columns (`x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`) abort that file. Missing **quality** columns do **not** stop the run: the matching filter steps are skipped, a warning is logged, and **`filtering_report.json`** records what ran.
+**CSV schema:** use the documented headers (rename exports into `data/input/` as needed). Required geometry/index columns are listed under `data.input.required_columns` in `config.yaml`; optional quality headers under `data.input.optional_quality_columns`. Missing **required** columns abort that file. Missing **quality** columns do **not** stop the run: the matching filter steps are skipped, a warning is logged, and **`filtering_report.json`** records what ran.
 
 ### Key Features
 
@@ -364,7 +364,7 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 
 - `input.file_format`: Format of your input data (e.g., `csv`). Supports CSV format.
 - `input.required_columns`: Exact headers validated on **load** (default: `x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`). Missing any of these **aborts that file**. Axial `z (nm)` with **non-zero** values **aborts** (3D not supported); an empty or all-zero z column is dropped with a warning. `channelName` is dropped if present.
-- **Optional quality columns** (exact NimOS-style names; rename other exports first): `background (photons/nm^2)`, `sigmaX (nm)`, `sigmaY (nm)`, `intensity (photons)`, `p-value` (or `pvalue`), `localization precision (nm)`. If a quality column is absent, the matching filter is **skipped**—the pipeline continues; see **filtering** and **`filtering_report.json`**.
+- `input.optional_quality_columns`: Documented NimOS-style quality headers listed in `config.yaml` so you know which names to provide or rename to **before** a run (default: `background (photons/nm^2)`, `sigmaX (nm)`, `sigmaY (nm)`, `intensity (photons)`, `localization precision (nm)`, `p-value`). These are **not** required at load; if absent, the matching filter is **skipped**—see **filtering** and **`filtering_report.json`**. The p-value filter also accepts the alternate header `pvalue`.
 - After each run, **`filtering_report.json`** in `test_data/` lists which filter steps were applied or skipped.
 - `input.xlsx_filename`: Name of the metadata Excel file (placed in `data/metadata/`). The pipeline uses this to discover which input files to process; input CSV files should be in `data/input/`.
 - `input.required_metadata_columns`: Dict mapping role to metadata Excel column name. **Required keys:** `file_name`, `first_channel_index`, `first_ch_frame_last`, `second_channel_index`, `second_ch_frame_last`. Headers are matched after normalization (strip, lower case, single space). Single-channel rows: leave second channel index and/or last frame blank or `None`.

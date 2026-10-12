@@ -3,12 +3,12 @@ import re
 from pathlib import Path
 from typing import Dict, Union
 
+import matplotlib
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import napari
 import numpy as np
 import pandas as pd
-from matplotlib import cm
 from matplotlib.colors import to_hex
 from matplotlib.patches import Patch
 from PIL import Image, ImageDraw, ImageFont
@@ -476,37 +476,38 @@ def create_stacked_napari_images(
     """
     images = []
     steps = [
-        ("initial", "napari_input_view.png", "0. Initial"),
+        ("initial", "napari_input_view.png", "Initial"),
         (
             "drift_corrected",
             "napari_view_after_drift_correction.png",
-            "1. After Drift Correction",
+            "After Drift Correction",
         ),
-        ("filtered", "napari_view_after_sigma_filter.png", "2. After Sigma Filter"),
+        ("filtered", "napari_view_after_sigma_filter.png", "After Sigma Filter"),
         (
             "filtered",
             "napari_view_after_photons_count_filter.png",
-            "3. After Photon Count Filter",
+            "After Photon Count Filter",
         ),
         (
             "filtered",
             "napari_view_after_localization_precision_filter.png",
-            "4. After Localization Precision Filter",
+            "After Localization Precision Filter",
         ),
-        ("filtered", "napari_view_after_pvalue_filter.png", "5. After P-Value Filter"),
+        ("filtered", "napari_view_after_pvalue_filter.png", "After P-Value Filter"),
         (
             "temporal_grouped",
             "napari_view_after_temporal_grouping.png",
-            "6. After Temporal Grouping",
+            "After Temporal Grouping",
         ),
         (
             "cell_detected",
             "napari_view_after_cell_detection.png",
-            "7. After Cell Detection",
+            "After Cell Detection",
         ),
     ]
 
-    for folder, filename, title in steps:
+    step_index = 0
+    for folder, filename, label in steps:
         path = os.path.join(output_folder, folder, filename)
         if not os.path.exists(path):
             logger.warning(f"⚠️ Skipping: {path} (not found)")
@@ -517,6 +518,9 @@ def create_stacked_napari_images(
         except Exception as e:
             logger.warning(f"❌ Failed to open {path}: {e}")
             continue
+
+        title = f"{step_index}. {label}"
+        step_index += 1
 
         title_bar_height = 50
         label_img = Image.new("RGB", (img.width, title_bar_height), (255, 255, 255))
@@ -1197,10 +1201,10 @@ def _cluster_color_map(valid_clusters: list) -> dict:
     if num_clusters == 1:
         return {valid_clusters[0]: "#1f77b4"}
     if num_clusters <= 20:
-        cmap = cm.get_cmap("tab20")
+        cmap = matplotlib.colormaps["tab20"]
         return {c: to_hex(cmap(i)) for i, c in enumerate(valid_clusters)}
     cluster_min, cluster_max = min(valid_clusters), max(valid_clusters)
-    cmap = cm.get_cmap("viridis")
+    cmap = matplotlib.colormaps["viridis"]
     return {
         c: to_hex(cmap((c - cluster_min) / max(cluster_max - cluster_min, 1)))
         for c in valid_clusters

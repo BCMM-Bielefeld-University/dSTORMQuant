@@ -10,12 +10,21 @@ data:
   input:
     file_format: "csv"  # Format of input files. Options: csv
     # Current release is 2D-only. These headers must exist or the file fails load.
-    # Quality columns (sigmaX/Y, intensity, etc.) are optional: missing ones skipW
     required_columns:
       - "x (nm)"
       - "y (nm)"
       - "channelIndex"
       - "frameIndex"
+    # Optional quality headers (NimOS-style).
+    # Missing ones skip the matching filter (see filtering.* and filtering_report.json).
+    # Rename other exported headers to these names before placing files in data/input/.
+    optional_quality_columns:
+      - "background (photons/nm^2)"
+      - "sigmaX (nm)"
+      - "sigmaY (nm)"
+      - "intensity (photons)"
+      - "localization precision (nm)"
+      - "p-value"
     xlsx_filename: "dSTORM Data_Input.xlsx"  # Metadata Excel file in data/metadata/
     skip_frames: 200  # Number of frames to skip at the start of each channel's frame range
 
@@ -49,7 +58,7 @@ channels:
 # Visualization (Napari screenshots on/off)
 # -----------------------------
 visualization:
-  use_napari: false   # false: skip Napari point/cluster screenshots
+  use_napari: true  
 
 # -----------------------------
 # Filtering parameters

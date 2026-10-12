@@ -10,7 +10,10 @@ import yaml
 from pydantic import ValidationError
 
 from dSTORMQuant.core.config.loader import get_config_params, load_config
-from dSTORMQuant.core.config.models import SMLMConfig
+from dSTORMQuant.core.config.models import (
+    DEFAULT_OPTIONAL_QUALITY_COLUMNS,
+    SMLMConfig,
+)
 
 
 def test_load_default_config_yaml(default_config_path: Path) -> None:
@@ -22,6 +25,31 @@ def test_load_default_config_yaml(default_config_path: Path) -> None:
     assert "clustering" in config
     assert config["data"]["input"]["file_format"] == "csv"
     assert config["drift_correction"]["pixel_size"] == 117
+    assert config["data"]["input"]["optional_quality_columns"] == (
+        DEFAULT_OPTIONAL_QUALITY_COLUMNS
+    )
+
+
+def test_optional_quality_columns_default_when_omitted(
+    default_config_path: Path,
+) -> None:
+    with open(default_config_path) as f:
+        data = yaml.safe_load(f)
+    data["data"]["input"].pop("optional_quality_columns", None)
+
+    cfg = SMLMConfig(**data)
+    assert cfg.data.input.optional_quality_columns == DEFAULT_OPTIONAL_QUALITY_COLUMNS
+
+
+def test_optional_quality_columns_rejects_empty_name(
+    default_config_path: Path,
+) -> None:
+    with open(default_config_path) as f:
+        data = yaml.safe_load(f)
+    data["data"]["input"]["optional_quality_columns"] = ["sigmaX (nm)", ""]
+
+    with pytest.raises(ValidationError):
+        SMLMConfig(**data)
 
 
 def test_load_config_missing_file(tmp_path: Path) -> None:

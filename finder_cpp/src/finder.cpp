@@ -225,8 +225,21 @@ std::vector<float> Finder<Point>::determine_sigma_boundaries(const std::vector<P
     }
     
     std::sort(kth_distances.begin(), kth_distances.end());
-    float sigma_min = kth_distances[static_cast<size_t>(kth_distances.size() * 0.1)];
-    float sigma_max = kth_distances[static_cast<size_t>(kth_distances.size() * 0.9)];
+    // Match numpy.quantile(..., method='linear'): q*(n-1) with interpolation
+    auto quantile_linear = [](const std::vector<float>& sorted, double q) -> float {
+        if (sorted.empty()) return 0.0f;
+        if (sorted.size() == 1) return sorted[0];
+        const double pos = q * static_cast<double>(sorted.size() - 1);
+        const size_t lo = static_cast<size_t>(std::floor(pos));
+        const size_t hi = static_cast<size_t>(std::ceil(pos));
+        if (lo == hi) return sorted[lo];
+        const double frac = pos - static_cast<double>(lo);
+        return static_cast<float>(
+            sorted[lo] * (1.0 - frac) + sorted[hi] * frac
+        );
+    };
+    float sigma_min = quantile_linear(kth_distances, 0.1);
+    float sigma_max = quantile_linear(kth_distances, 0.9);
     
     std::cout << "Boundaries for sigma: " << sigma_min << " , " << sigma_max << std::endl;
     
@@ -264,7 +277,19 @@ std::vector<float> Finder<Point>::determine_sigma_boundaries_adaptive(const std:
     }
     
     std::sort(kth_distances_min.begin(), kth_distances_min.end());
-    float sigma_min = kth_distances_min[static_cast<size_t>(kth_distances_min.size() * 0.1)];
+    auto quantile_linear = [](const std::vector<float>& sorted, double q) -> float {
+        if (sorted.empty()) return 0.0f;
+        if (sorted.size() == 1) return sorted[0];
+        const double pos = q * static_cast<double>(sorted.size() - 1);
+        const size_t lo = static_cast<size_t>(std::floor(pos));
+        const size_t hi = static_cast<size_t>(std::ceil(pos));
+        if (lo == hi) return sorted[lo];
+        const double frac = pos - static_cast<double>(lo);
+        return static_cast<float>(
+            sorted[lo] * (1.0 - frac) + sorted[hi] * frac
+        );
+    };
+    float sigma_min = quantile_linear(kth_distances_min, 0.1);
     
     // For max
     int k_max = minmax_threshold_[1] + 1;
@@ -282,7 +307,7 @@ std::vector<float> Finder<Point>::determine_sigma_boundaries_adaptive(const std:
     }
     
     std::sort(kth_distances_max.begin(), kth_distances_max.end());
-    float sigma_max = kth_distances_max[static_cast<size_t>(kth_distances_max.size() * 0.9)];
+    float sigma_max = quantile_linear(kth_distances_max, 0.9);
     
     std::cout << "Boundaries for sigma: " << sigma_min << " , " << sigma_max << std::endl;
     

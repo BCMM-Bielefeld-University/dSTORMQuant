@@ -23,3 +23,16 @@ struct point3
 // Function declarations
 auto dbscan(const std::span<const point2>& data, float eps, int min_pts) -> std::vector<std::vector<size_t>>;
 auto dbscan(const std::span<const point3>& data, float eps, int min_pts) -> std::vector<std::vector<size_t>>;
+
+/**
+ * sklearn-compatible DBSCAN result: labels for all points plus core sample indices.
+ * Core points have >= min_pts neighbors within eps (including self).
+ * Border points are labeled with a cluster but are not cores; noise is -1.
+ */
+struct DbscanLabeledResult {
+    std::vector<int> labels;
+    std::vector<size_t> core_sample_indices;
+};
+
+auto dbscan_labeled(const std::span<const point2>& data, float eps, int min_pts) -> DbscanLabeledResult;
+auto dbscan_labeled(const std::span<const point3>& data, float eps, int min_pts) -> DbscanLabeledResult;

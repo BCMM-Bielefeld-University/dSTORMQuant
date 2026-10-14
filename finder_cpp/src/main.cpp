@@ -241,7 +241,7 @@ int main(int argc, char* argv[]) {
     bool use_3d = false;
     int threshold = 10;
     int points_per_dimension = 15;
-    std::string algorithm = "dbscan";
+    std::string algorithm = "DbscanLoop";
     int min_threshold = 5;
     int max_threshold = 21;
     float decay = 0.5f;
@@ -364,7 +364,7 @@ int main(int argc, char* argv[]) {
             algorithm,              // algorithm
             {min_threshold, max_threshold},  // minmax_threshold
             "twoD",                 // one_two_d
-            "total",            // similarity_score_computation
+            "threshold",            // similarity_score_computation (match pip Finder)
             false,                  // log_thresholds
             true,                   // log_sigmas
             false,                  // adaptive_sigma_boundaries

@@ -48,7 +48,13 @@ Point compute_median(const std::vector<Point>& points) {
         }
         std::sort(x_vals.begin(), x_vals.end());
         std::sort(y_vals.begin(), y_vals.end());
-        return Point{x_vals[n/2], y_vals[n/2]};
+        // Match numpy.median: average the two central values for even n
+        auto med = [](std::vector<float>& v) -> float {
+            const size_t m = v.size();
+            if (m % 2 == 1) return v[m / 2];
+            return 0.5f * (v[m / 2 - 1] + v[m / 2]);
+        };
+        return Point{med(x_vals), med(y_vals)};
     } else {
         std::vector<float> x_vals, y_vals, z_vals;
         for (const auto& p : points) {
@@ -59,7 +65,12 @@ Point compute_median(const std::vector<Point>& points) {
         std::sort(x_vals.begin(), x_vals.end());
         std::sort(y_vals.begin(), y_vals.end());
         std::sort(z_vals.begin(), z_vals.end());
-        return Point{x_vals[n/2], y_vals[n/2], z_vals[n/2]};
+        auto med = [](std::vector<float>& v) -> float {
+            const size_t m = v.size();
+            if (m % 2 == 1) return v[m / 2];
+            return 0.5f * (v[m / 2 - 1] + v[m / 2]);
+        };
+        return Point{med(x_vals), med(y_vals), med(z_vals)};
     }
 }
 
@@ -197,8 +208,10 @@ bool overlapClusters_NumberOfLocs(
     }
     
     if (no_locs_1 == 0 || no_locs_2 == 0) return false;
-    
-    return (no_locs_overlap > no_locs_1 / 2) && (no_locs_overlap > no_locs_2 / 2);
+
+    // Match Python: overlap/n > 0.5 (float division, not integer)
+    return (static_cast<double>(no_locs_overlap) / no_locs_1 > 0.5) &&
+           (static_cast<double>(no_locs_overlap) / no_locs_2 > 0.5);
 }
 
 std::pair<std::vector<int>, std::vector<int>> getSimilarityScore_ij(
@@ -232,10 +245,12 @@ std::pair<std::vector<int>, std::vector<int>> getSimilarityScore_ij(
     if (max_label_1 == -1 || max_label_2 == -1) {
         return {{}, {}};
     }
-    if (max_label_1 == 0 && std::count(labels_1.begin(), labels_1.end(), 0) > labels_1.size() / 2) {
+    if (max_label_1 == 0 &&
+        static_cast<double>(std::count(labels_1.begin(), labels_1.end(), 0)) / labels_1.size() > 0.5) {
         return {{}, {}};
     }
-    if (max_label_2 == 0 && std::count(labels_2.begin(), labels_2.end(), 0) > labels_2.size() / 2) {
+    if (max_label_2 == 0 &&
+        static_cast<double>(std::count(labels_2.begin(), labels_2.end(), 0)) / labels_2.size() > 0.5) {
         return {{}, {}};
     }
     

@@ -58,7 +58,7 @@ py::dict run_finder_2d(
         algorithm,
         {min_threshold, max_threshold},
         "twoD",
-        "total",
+        "threshold",  // match pip Finder / CLI default
         false,  // log_thresholds
         true,   // log_sigmas
         false,  // adaptive_sigma_boundaries

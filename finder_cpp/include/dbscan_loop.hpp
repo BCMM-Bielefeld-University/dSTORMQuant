@@ -6,53 +6,32 @@
 
 #include "dbscan.hpp"
 #include <vector>
-#include <span>
 
 namespace finder {
 
 /**
- * The noise-free implementation of DBSCAN, as described in the paper.
- * This iteratively applies DBSCAN, keeping only core samples until convergence.
+ * Noise-free DBSCAN (DbscanLoop), matching finder_smlm / verzep/finder_code.
+ *
+ * Iteratively keeps only sklearn-style core samples until the set stabilizes,
+ * then assigns labels from the last DBSCAN fit to those core points. All other
+ * points remain noise (-1).
  */
 class DbscanLoop {
 public:
-    /**
-     * Constructor
-     * @param eps The radius parameter (epsilon)
-     * @param min_samples The minimum number of samples (minPts)
-     */
     DbscanLoop(float eps, int min_samples);
-    
-    /**
-     * Fit the model to 2D data
-     * @param data Input points (2D)
-     * @return Reference to this object for chaining
-     */
+
     DbscanLoop& fit(const std::vector<point2>& data);
-    
-    /**
-     * Fit the model to 3D data
-     * @param data Input points (3D)
-     * @return Reference to this object for chaining
-     */
     DbscanLoop& fit(const std::vector<point3>& data);
-    
-    /**
-     * Get the cluster labels after fitting
-     * Labels are -1 for noise points, 0+ for cluster IDs
-     * @return Vector of labels for each point
-     */
+
     const std::vector<int>& get_labels() const { return labels_; }
-    
+
 private:
     float eps_;
     int min_samples_;
     std::vector<int> labels_;
-    
-    // Helper to convert cluster indices to labels
+
     template<typename Point>
-    void process_clusters(const std::vector<std::vector<size_t>>& clusters, 
-                         size_t original_size);
+    DbscanLoop& fit_impl(const std::vector<Point>& data);
 };
 
 } // namespace finder

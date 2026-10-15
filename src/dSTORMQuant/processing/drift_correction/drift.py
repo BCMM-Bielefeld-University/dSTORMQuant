@@ -65,7 +65,7 @@ def apply_aim_drift(
         )
 
         base, _ = os.path.splitext(input_file_name)
-        drift_corrected_dir: str = os.path.join(output_dir, "drift_corrected")
+        drift_corrected_dir: str = os.path.join(str(output_dir), "drift_corrected")
         os.makedirs(drift_corrected_dir, exist_ok=True)
 
         drift_corrected_hdf5_path: str = os.path.join(

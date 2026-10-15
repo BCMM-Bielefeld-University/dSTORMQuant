@@ -3,6 +3,7 @@ AIM drift correction — adapted from Picasso `picasso.aim`.
 
 Algorithm
     Adaptive Intersection Maximization (AIM): Ma et al., Science Advances, 2024.
+    Reference MATLAB: https://github.com/YangLiuLab/AIM
 Upstream
     Picasso (Schnitzbauer et al., 2017), Jungmann Lab, MPI of Biochemistry.
     Original authors of this AIM module: Hongqiang Ma, Maomao Chen, Phuong Nguyen,
@@ -15,13 +16,16 @@ dSTORMQuant adaptations (Suraj Karki, Bielefeld University)
     - CSV/HDF5 I/O and logging for this pipeline's localization schema
     - Optional localization sanity filters before AIM
     - Optional segment drift validation/replacement (see validate_and_replace_drift)
+    - FFT peak bin→pixel scale uses (2*roi_r)/box (FOV/N), not MATLAB
+      IntersectD / current Picasso intersect_d (see get_fft_peak)
     Dual-channel registration (independent undrift + cumulative Ch1→Ch2 drift
     transfer) lives in core/pipeline.py, not in the AIM core loop.
 
 Effect on results
-    Core AIM undrift is intended to follow Picasso for a single channel when
-    drift validation is disabled. Segment validation and dual-channel transfer
-    are pipeline-specific and can change coordinates vs Picasso alone.
+    Core AIM undrift is related to Picasso/MATLAB AIM but is not bit-identical:
+    FFT peak scaling and (vs recent Picasso) lack of exclude_self / mean-centering
+    can change drift and coordinates. Segment validation and dual-channel transfer
+    are additional pipeline-specific changes.
 
 Full change log: ATTRIBUTION.md.
 """
@@ -514,8 +518,7 @@ def intersection_max(
             box,
         )
 
-        # estimate the precise sub-pixel position of the peak of roi_cc
-        # with FFT
+        # FFT peak: pass search diameter so scale = (2*roi_r)/box (FOV/N).
         px, py = get_fft_peak(roi_cc, 2 * roi_r)
 
         # Store relative drift (the frame-to-frame shift)

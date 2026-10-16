@@ -9,7 +9,8 @@ This file documents **provenance**, **what dSTORMQuant changed**, and **whether 
 ## AIM drift correction (Picasso)
 
 **Algorithm:** Adaptive Intersection Maximization (AIM) — Ma *et al.*, *Science Advances*, 2024  
-**Source:** Picasso `picasso.aim` — [jungmannlab/picasso](https://github.com/jungmannlab/picasso) (Schnitzbauer *et al.*, 2017; Jungmann Lab, MPI of Biochemistry)  
+**Reference MATLAB:** [YangLiuLab/AIM](https://github.com/YangLiuLab/AIM)  
+**Source (Python port):** Picasso `picasso.aim` — [jungmannlab/picasso](https://github.com/jungmannlab/picasso) (Schnitzbauer *et al.*, 2017; Jungmann Lab, MPI of Biochemistry)  
 **Paths in this repo:**
 
 
@@ -28,20 +29,22 @@ This file documents **provenance**, **what dSTORMQuant changed**, and **whether 
 - Optional localization sanity filters before AIM
 - Optional segment drift validation: replace segments whose relative drift exceeds a nm threshold with the mean of preceding valid segments
 - Dual-channel workflow (pipeline): undrift each channel independently, then subtract cumulative channel-1 drift from channel-2 coordinates
-
-
+- **FFT peak bin→pixel conversion (intentional dSTORMQuant / published-pipeline choice):**  
+  `get_fft_peak(roi_cc, 2 * roi_r)` scales peak bins by `(2 * roi_r) / box` (FOV/N using the search diameter).  
+  YangLiuLab MATLAB AIM scales by `IntersectD`; current Picasso scales by `intersect_d` (bin spacing).  
+  These match only approximately; for typical `roi_r = 3 * intersect_d` (`box = 7`) the ratio is `(box-1)/box = 6/7`.  
+  Comments live in `AIM.py` (`get_fft_peak`, call site in `intersection_max`).
 
 ### Effect on results
 
-- Core AIM undrift is intended to follow Picasso for a **single channel** when drift validation is **off**
+- Core AIM undrift is **related to** Picasso / MATLAB AIM but **not bit-identical**, even with drift validation **off**, mainly because of the FFT peak scaling above (and vs recent Picasso: no round-2 `exclude_self`, frame-0 drift zeroing instead of mean-centering)
 - Enabling segment validation **can change** the drift trace and corrected coordinates
 - Dual-channel cumulative-drift transfer **changes** channel-2 absolute coordinates relative to running AIM on each channel alone; it does not re-run AIM
-
-
 
 ### Validation
 
 - Qualitative QC via Napari / drift plots in the pipeline
+- Optional offline runners: `aim_drift_dSTORMQuant.py` (this module) and `aim_drift_picasso.py` (Picasso `aim.aim` API, as in `sample_notebook_2_basic_analysis.ipynb`)
 
 ---
 

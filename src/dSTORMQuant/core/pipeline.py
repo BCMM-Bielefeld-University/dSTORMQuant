@@ -30,6 +30,11 @@ from dSTORMQuant.processing.filtering.filtering import (
     apply_filters,
     write_filtering_report_json,
 )
+from dSTORMQuant.processing.lp_calculation import (
+    apply_lp_calculation,
+    lp_input_columns,
+    lp_passthrough_columns,
+)
 from dSTORMQuant.processing.filtering.temporal_grouping import (
     duration_filtering,
     run_spatiotemporal_grouping,
@@ -265,6 +270,32 @@ def extract_and_configure_channels(
     return new_df, channels, is_single_channel
 
 
+def _rewrite_channel_csvs(
+    df: pd.DataFrame,
+    input_file_name: str,
+    input_dir: Path,
+    channels: dict[str, tuple[str, str, int]],
+) -> None:
+    """Overwrite per-channel CSVs from df."""
+    base = os.path.splitext(input_file_name)[0]
+    for ch_key, (_color, _label, ch_index) in channels.items():
+        suffix = "ch1" if ch_key == "Ch1" else "ch2"
+        ch_df = df[df["channelIndex"] == ch_index]
+        save_df_to_csv(ch_df, os.path.join(input_dir, f"{base}_{suffix}.csv"))
+
+
+def _recompute_lp(
+    df: pd.DataFrame,
+    config: dict[str, Any],
+    *,
+    stage: str,
+) -> pd.DataFrame:
+    """Recompute LP_calculated for a pipeline stage when enabled."""
+    if not (config.get("lp_calculation") or {}).get("use"):
+        return df
+    return apply_lp_calculation(df, config, stage=stage)
+
+
 def visualize_initial_data(
     df: pd.DataFrame,
     channels: dict[str, tuple[str, str, int]],
@@ -345,6 +376,8 @@ def apply_drift_correction(
     intersect_d_pixels = intersect_d_nm / pixel_size
     roi_r_pixels = roi_r_nm / pixel_size
 
+    passthrough_columns = lp_passthrough_columns(config)
+
     logger.info(
         f"Drift correction parameters: intersect_d={intersect_d_nm}nm ({intersect_d_pixels:.4f} pixels), roi_r={roi_r_nm}nm ({roi_r_pixels:.4f} pixels)"
     )
@@ -371,6 +404,7 @@ def apply_drift_correction(
         roi_r_pixels,
         sanity_config=sanity_config,
         drift_validation_config=drift_validation_config,
+        passthrough_columns=passthrough_columns or None,
     )
     df_ch1_drift_corrected = load_data(undrift_df_ch1_path)
 
@@ -391,6 +425,7 @@ def apply_drift_correction(
             roi_r_pixels,
             sanity_config=sanity_config,
             drift_validation_config=drift_validation_config,
+            passthrough_columns=passthrough_columns or None,
         )
         df_ch2_drift_corrected = load_data(undrift_df_ch2_path)
 
@@ -449,7 +484,8 @@ def visualize_drift_corrected_data(
     input_file_name: str,
     *,
     use_napari: bool = True,
-) -> dict[str, Any]:
+    config: dict[str, Any] | None = None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
     """
     Visualize drift-corrected data and save metrics.
 
@@ -458,10 +494,15 @@ def visualize_drift_corrected_data(
         channels: Channel configuration
         temp_dir: Temporary directory path
         input_file_name: Name of input file
+        config: Optional full config; when LP recalculation is enabled, recomputes
+            ``LP_calculated`` before saving the stage CSV.
 
     Returns:
-        Dictionary of summary statistics
+        Tuple of (dataframe with LP updated if enabled, summary statistics)
     """
+    if config is not None:
+        df = _recompute_lp(df, config, stage="after_drift_correction")
+
     save_napari_points_screenshot(
         df,
         channels,
@@ -488,7 +529,7 @@ def visualize_drift_corrected_data(
         ),
     )
 
-    return summary_stats
+    return df, summary_stats
 
 
 def apply_filtering_pipeline(
@@ -555,6 +596,7 @@ def apply_filtering_pipeline(
         after_filtering_summary_stats.append(summary_stats)
 
     final_df = filter_steps[-1][1]
+    final_df = _recompute_lp(final_df, config, stage="after_filtering")
     save_df_to_csv(
         final_df,
         os.path.join(
@@ -593,6 +635,7 @@ def apply_temporal_grouping(
         temporal_grouped_path = ensure_directory(
             os.path.join(temp_dir, "temporal_grouped")
         )
+        df = _recompute_lp(df, config, stage="after_temporal_grouping")
         save_df_to_csv(
             df,
             os.path.join(
@@ -610,12 +653,16 @@ def apply_temporal_grouping(
     min_duration = temporal_grouping_params["min_duration"]
     max_duration = temporal_grouping_params["max_duration"]
 
+    preserve_columns = lp_input_columns(config)
     channel_groups = list(df.groupby("channelIndex"))
     with ThreadPoolExecutor() as executor:
         grouped_results = list(
             executor.map(
                 lambda tup: run_spatiotemporal_grouping(
-                    tup, max_frame_gap=max_frame_gap, max_distance_nm=max_distance_nm
+                    tup,
+                    max_frame_gap=max_frame_gap,
+                    max_distance_nm=max_distance_nm,
+                    preserve_columns=preserve_columns or None,
                 ),
                 channel_groups,
             )
@@ -624,6 +671,7 @@ def apply_temporal_grouping(
     combined_df = duration_filtering(
         combined_df, min_duration=min_duration, max_duration=max_duration
     )
+    combined_df = _recompute_lp(combined_df, config, stage="after_temporal_grouping")
 
     summary_stats = plot_metrics(
         combined_df, channels, temporal_grouped_path, prefix="after_temporal_grouping",
@@ -703,6 +751,8 @@ def perform_cell_detection(
                 vor=vor,
                 save_path=os.path.join(temp_dir, "cell_detected", "CD_combined.png"),
             )
+
+        cell_df = _recompute_lp(cell_df, config, stage="after_cell_detection")
 
         summary_stats = plot_metrics(
             cell_df,
@@ -1125,6 +1175,17 @@ def process_single_file(
     if new_df is None:
         return _fail("Channel extraction/configuration failed.")
 
+    # Optional Mortensen LP recalculation after each major stage
+    t0 = time.time()
+    try:
+        new_df = _recompute_lp(new_df, config, stage="initial")
+    except ValueError as e:
+        logger.error(str(e))
+        return _fail(str(e))
+    if (config.get("lp_calculation") or {}).get("use"):
+        _rewrite_channel_csvs(new_df, input_file_name, input_dir, channels)
+    step_times["lp_calculation_initial"] = time.time() - t0
+
     # Step 2: Initial visualization
     t0 = time.time()
     initial_summary_stats = visualize_initial_data(
@@ -1139,35 +1200,65 @@ def process_single_file(
     )
     step_times["drift_correction"] = time.time() - t0
 
-    after_drift_correction_summary_stats = visualize_drift_corrected_data(
-        df_drift_corrected, channels, temp_dir, input_file_name, use_napari=use_napari
-    )
+    try:
+        df_drift_corrected, after_drift_correction_summary_stats = (
+            visualize_drift_corrected_data(
+                df_drift_corrected,
+                channels,
+                temp_dir,
+                input_file_name,
+                use_napari=use_napari,
+                config=config,
+            )
+        )
+    except ValueError as e:
+        logger.error(str(e))
+        return _fail(str(e))
 
     # Step 4: Filtering
     t0 = time.time()
-    final_df, after_filtering_summary_stats, filter_reports = apply_filtering_pipeline(
-        df_drift_corrected,
-        config,
-        channels,
-        temp_dir,
-        input_file_name,
-        use_napari=use_napari,
-    )
+    try:
+        final_df, after_filtering_summary_stats, filter_reports = (
+            apply_filtering_pipeline(
+                df_drift_corrected,
+                config,
+                channels,
+                temp_dir,
+                input_file_name,
+                use_napari=use_napari,
+            )
+        )
+    except ValueError as e:
+        logger.error(str(e))
+        return _fail(str(e))
     step_times["filtering"] = time.time() - t0
     filter_fields = filtering_summary_from_reports(filter_reports)
 
     # Step 5: Temporal grouping
     t0 = time.time()
-    combined_df, after_temporal_grouping_summary_stats = apply_temporal_grouping(
-        final_df, config, channels, temp_dir, input_file_name, use_napari=use_napari
-    )
+    try:
+        combined_df, after_temporal_grouping_summary_stats = apply_temporal_grouping(
+            final_df, config, channels, temp_dir, input_file_name, use_napari=use_napari
+        )
+    except ValueError as e:
+        logger.error(str(e))
+        return _fail(str(e))
     step_times["temporal_grouping"] = time.time() - t0
 
     # Step 6: Cell detection
     t0 = time.time()
-    cell_df, after_cell_detection_summary_stats = perform_cell_detection(
-        combined_df, config, channels, temp_dir, input_file_name, use_napari=use_napari
-    )
+    try:
+        cell_df, after_cell_detection_summary_stats = perform_cell_detection(
+            combined_df,
+            config,
+            channels,
+            temp_dir,
+            input_file_name,
+            use_napari=use_napari,
+        )
+    except ValueError as e:
+        logger.error(str(e))
+        return _fail(str(e))
     step_times["cell_detection"] = time.time() - t0
 
     # Save processing summary

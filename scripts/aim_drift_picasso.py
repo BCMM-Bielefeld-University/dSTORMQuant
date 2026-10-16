@@ -218,7 +218,7 @@ def run_one(
     drift_txt = file_out / "drift_corrected" / "input_aimdrift.txt"
     savetxt(drift_txt, drift_xy, header="dx\tdy", newline="\r\n")
     plot_drift_data(str(drift_txt), file_out, "input", pixel_nm)
-    print(f"  wrote drift_corrected/drift_correction_plot_input.png/.svg")
+    print("  wrote drift_corrected/drift_correction_plot_input.png/.svg")
 
     export = undrifted.copy()
     for col in ("x", "y", "sx", "sy"):

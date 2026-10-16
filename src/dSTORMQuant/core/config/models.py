@@ -336,6 +336,76 @@ class DriftCorrectionConfig(BaseModel):
     sanity_checks: SanityChecksConfig = Field(..., description="Sanity check filters")
 
 
+class LPColumnMapping(BaseModel):
+    """Exact CSV headers used as inputs to Mortensen LP recalculation."""
+
+    intensity: str = Field(
+        default="intensity (photons)",
+        min_length=1,
+        description="Photon / intensity column header",
+    )
+    background: str = Field(
+        default="background (photons/nm^2)",
+        min_length=1,
+        description="Background column header",
+    )
+    sigma: str | None = Field(
+        default="sigma [nm]",
+        description=(
+            "Single sigma column header (e.g. 'sigma [nm]'). Used when "
+            "sigma_x/sigma_y are not both present in the CSV."
+        ),
+    )
+    sigma_x: str = Field(
+        default="sigmaX (nm)",
+        min_length=1,
+        description="Sigma X column; preferred when both sigma_x and sigma_y exist",
+    )
+    sigma_y: str = Field(
+        default="sigmaY (nm)",
+        min_length=1,
+        description="Sigma Y column; preferred when both sigma_x and sigma_y exist",
+    )
+
+
+class LPCalculationConfig(BaseModel):
+    """Optional Mortensen localization-precision recalculation."""
+
+    use: bool = Field(
+        default=False,
+        description=(
+            "If true, recompute LP at each major pipeline stage (initial, after "
+            "drift, after filtering, after temporal grouping, after cell "
+            "detection) into output_column; the original LP column is kept."
+        ),
+    )
+    method: Literal["mle", "lsq"] = Field(
+        default="mle",
+        description="Mortensen Eq. 5 (mle) or Eq. 6 (lsq)",
+    )
+    emccd: bool = Field(
+        default=False,
+        description="Apply EMCCD excess-noise factor 2 on variance",
+    )
+    bg_unit: Literal["per_nm2", "per_pixel"] = Field(
+        default="per_nm2",
+        description="Units of the background column",
+    )
+    sigma_mode: Literal["mean", "geo", "x", "y"] = Field(
+        default="mean",
+        description="How to combine sigma_x/sigma_y when both are used",
+    )
+    output_column: str = Field(
+        default="LP_calculated",
+        min_length=1,
+        description="Column name for the recomputed precision (nm)",
+    )
+    columns: LPColumnMapping = Field(
+        default_factory=LPColumnMapping,
+        description="Exact input CSV headers for intensity, background, and sigma",
+    )
+
+
 class TemporalGroupingConfig(BaseModel):
     """Temporal grouping configuration."""
 
@@ -497,6 +567,10 @@ class SMLMConfig(BaseModel):
     channels: ChannelsConfig
     filtering: FilteringConfig
     drift_correction: DriftCorrectionConfig
+    lp_calculation: LPCalculationConfig = Field(
+        default_factory=LPCalculationConfig,
+        description="Optional Mortensen LP recalculation (writes LP_calculated)",
+    )
     temporal_grouping: TemporalGroupingConfig
     cell_detection: CellDetectionConfig
     nearest_neighbor_analysis: NearestNeighborConfig

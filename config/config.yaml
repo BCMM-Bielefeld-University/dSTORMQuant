@@ -100,6 +100,23 @@ drift_correction:
     filter_parameters: true        # Remove localizations with sx<=0, sy<=0, or lp<=0
 
 # -----------------------------
+# Localization precision (Mortensen)
+# -----------------------------
+lp_calculation:
+  use: true
+  method: "lsq"                 # "mle" (Mortensen Eq. 5) or "lsq" (Eq. 6)
+  emccd: true                  # true: apply EMCCD excess-noise factor 2
+  bg_unit: "per_nm2"            # "per_nm2" or "per_pixel"
+  sigma_mode: "mean"            # "mean" | "geo" | "x" | "y" when using sigma_x/sigma_y
+  output_column: "LP_calculated"
+  columns:
+    intensity: "intensity (photons)"
+    background: "background (photons/nm^2)"
+    sigma: "sigma [nm]"
+    sigma_x: "sigmaX (nm)"
+    sigma_y: "sigmaY (nm)"
+
+# -----------------------------
 # Temporal grouping
 # -----------------------------
 temporal_grouping:

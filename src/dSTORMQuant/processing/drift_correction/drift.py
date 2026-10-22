@@ -30,6 +30,7 @@ def apply_aim_drift(
     roi_r: float,
     sanity_config: dict[str, Any] | None = None,
     drift_validation_config: dict[str, Any] | None = None,
+    passthrough_columns: list[str] | tuple[str, ...] | None = None,
 ) -> tuple[str, Any]:
     """
     Apply AIM drift correction to a localization dataset.
@@ -44,13 +45,20 @@ def apply_aim_drift(
         roi_r (float): Search region radius in pixels
         sanity_config (dict, optional): Configuration for sanity checks
         drift_validation_config (dict, optional): Configuration for drift validation
+        passthrough_columns: Extra CSV columns to keep through HDF5 I/O
+            (e.g. ``LP_calculated``)
 
     Returns:
         tuple: (Path to the corrected CSV file, drift array)
     """
     try:
         logger.info(f"Starting AIM drift correction for file: {input_file_name}")
-        hdf5_path: str = csv2hdf(input_path, pixel_size, sanity_config=sanity_config)
+        hdf5_path: str = csv2hdf(
+            input_path,
+            pixel_size,
+            sanity_config=sanity_config,
+            passthrough_columns=passthrough_columns,
+        )
 
         locs, info = load_locs(hdf5_path)
         logger.info(f"Loaded localization data from: {hdf5_path}")
@@ -65,7 +73,7 @@ def apply_aim_drift(
         )
 
         base, _ = os.path.splitext(input_file_name)
-        drift_corrected_dir: str = os.path.join(output_dir, "drift_corrected")
+        drift_corrected_dir: str = os.path.join(str(output_dir), "drift_corrected")
         os.makedirs(drift_corrected_dir, exist_ok=True)
 
         drift_corrected_hdf5_path: str = os.path.join(

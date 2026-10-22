@@ -10,11 +10,22 @@ from dSTORMQuant.utils.logger import get_logger
 logger = get_logger()
 
 
+def _aggregate_optional_column(col: str, series: pd.Series) -> float:
+    """Aggregate one optional column for a spatiotemporal group."""
+    lower = col.lower()
+    if any(token in lower for token in ("photon", "intensity")):
+        return float(series.sum())
+    if any(token in lower for token in ("sigma", "sx", "sy", "lp", "pvalue")):
+        return float(np.sqrt((series**2).mean()))
+    return float(series.mean())
+
+
 def spatiotemporal_grouping(
     df: pd.DataFrame,
     max_frame_gap: int = 2,
     max_distance_nm: float = 60,
     channel_index: int | None = None,
+    preserve_columns: list[str] | tuple[str, ...] | None = None,
 ) -> pd.DataFrame:
     """Group localizations into spatiotemporal tracks and aggregate per track.
 
@@ -27,12 +38,14 @@ def spatiotemporal_grouping(
         max_frame_gap: Maximum absolute frame difference to link two points.
         max_distance_nm: Spatial linking radius in nanometers.
         channel_index: Channel index stored on each output row, or ``None``.
+        preserve_columns: Extra numeric columns to aggregate (e.g. LP config
+            headers carried through drift).
 
     Returns:
         One row per track with columns ``x``, ``y``, ``track_ID``, ``n_locs``,
         ``first_frame``, ``last_frame``, ``duration``, ``channelIndex``, and any
         aggregated optional columns (``lp``, ``photons``, ``bg``, ``sx``, ``sy``,
-        ``pvalue``) that were valid in the input.
+        ``pvalue``, plus ``preserve_columns``) that were valid in the input.
     """
     df = df.dropna(subset=["x", "y", "frame"]).copy()
     df.sort_values(by="frame", inplace=True)
@@ -40,7 +53,10 @@ def spatiotemporal_grouping(
 
     # Identify which optional columns are actually present and numeric
     optional_cols = ["lp", "photons", "bg", "sx", "sy", "pvalue"]
-    available_cols = {}
+    for col in preserve_columns or ():
+        if col not in optional_cols:
+            optional_cols.append(col)
+    available_cols: dict[str, bool] = {}
     for col in optional_cols:
         if col in df.columns and pd.to_numeric(df[col], errors="coerce").notna().any():
             df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -91,19 +107,9 @@ def spatiotemporal_grouping(
             "channelIndex": channel_index,
         }
 
-        # Optional fields
-        if available_cols["lp"]:
-            record["lp"] = np.sqrt((group_df["lp"] ** 2).mean())
-        if available_cols["photons"]:
-            record["photons"] = group_df["photons"].sum()
-        if available_cols["bg"]:
-            record["bg"] = group_df["bg"].mean()
-        if available_cols["sx"]:
-            record["sx"] = np.sqrt((group_df["sx"] ** 2).mean())
-        if available_cols["sy"]:
-            record["sy"] = np.sqrt((group_df["sy"] ** 2).mean())
-        if available_cols["pvalue"]:
-            record["pvalue"] = np.sqrt((group_df["pvalue"] ** 2).mean())
+        for col, is_available in available_cols.items():
+            if is_available:
+                record[col] = _aggregate_optional_column(col, group_df[col])
 
         grouped_data.append(record)
         group_id += 1
@@ -136,6 +142,7 @@ def run_spatiotemporal_grouping(
     channel_tuple: tuple[int, pd.DataFrame],
     max_frame_gap: int = 2,
     max_distance_nm: float = 60,
+    preserve_columns: list[str] | tuple[str, ...] | None = None,
 ) -> pd.DataFrame:
     """Apply :func:`spatiotemporal_grouping` to one channel's localizations.
 
@@ -143,6 +150,7 @@ def run_spatiotemporal_grouping(
         channel_tuple: ``(channel_index, localization_dataframe)`` pair.
         max_frame_gap: Passed to :func:`spatiotemporal_grouping`.
         max_distance_nm: Passed to :func:`spatiotemporal_grouping`.
+        preserve_columns: Passed to :func:`spatiotemporal_grouping`.
 
     Returns:
         Grouped track dataframe for the channel.
@@ -153,4 +161,5 @@ def run_spatiotemporal_grouping(
         max_frame_gap=max_frame_gap,
         max_distance_nm=max_distance_nm,
         channel_index=channel,
+        preserve_columns=preserve_columns,
     )

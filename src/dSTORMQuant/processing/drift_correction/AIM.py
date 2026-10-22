@@ -3,6 +3,7 @@ AIM drift correction — adapted from Picasso `picasso.aim`.
 
 Algorithm
     Adaptive Intersection Maximization (AIM): Ma et al., Science Advances, 2024.
+    Reference MATLAB: https://github.com/YangLiuLab/AIM
 Upstream
     Picasso (Schnitzbauer et al., 2017), Jungmann Lab, MPI of Biochemistry.
     Original authors of this AIM module: Hongqiang Ma, Maomao Chen, Phuong Nguyen,
@@ -15,13 +16,16 @@ dSTORMQuant adaptations (Suraj Karki, Bielefeld University)
     - CSV/HDF5 I/O and logging for this pipeline's localization schema
     - Optional localization sanity filters before AIM
     - Optional segment drift validation/replacement (see validate_and_replace_drift)
+    - FFT peak bin→pixel scale uses (2*roi_r)/box (FOV/N), not MATLAB
+      IntersectD / current Picasso intersect_d (see get_fft_peak)
     Dual-channel registration (independent undrift + cumulative Ch1→Ch2 drift
     transfer) lives in core/pipeline.py, not in the AIM core loop.
 
 Effect on results
-    Core AIM undrift is intended to follow Picasso for a single channel when
-    drift validation is disabled. Segment validation and dual-channel transfer
-    are pipeline-specific and can change coordinates vs Picasso alone.
+    Core AIM undrift is related to Picasso/MATLAB AIM but is not bit-identical:
+    FFT peak scaling and (vs recent Picasso) lack of exclude_self / mean-centering
+    can change drift and coordinates. Segment validation and dual-channel transfer
+    are additional pipeline-specific changes.
 
 Full change log: ATTRIBUTION.md.
 """
@@ -514,8 +518,7 @@ def intersection_max(
             box,
         )
 
-        # estimate the precise sub-pixel position of the peak of roi_cc
-        # with FFT
+        # FFT peak: pass search diameter so scale = (2*roi_r)/box (FOV/N).
         px, py = get_fft_peak(roi_cc, 2 * roi_r)
 
         # Store relative drift (the frame-to-frame shift)
@@ -952,10 +955,26 @@ def ensure_sanity(
     removed_locs_list = []
     removal_reasons = []
 
-    # Remove any rows with inf or nan in any field
+    # Remove any rows with inf or nan in core localization fields only.
+    # Passthrough columns (e.g. LP_calculated) may intentionally contain NaN.
+    _FINITE_CHECK_FIELDS = (
+        "frame",
+        "x",
+        "y",
+        "sx",
+        "sy",
+        "lp",
+        "photons",
+        "bg",
+        "pvalue",
+        "channelIndex",
+    )
     if remove_invalid:
+        fields_to_check = [f for f in locs.dtype.names if f in _FINITE_CHECK_FIELDS]
+        if not fields_to_check:
+            fields_to_check = list(locs.dtype.names)
         valid_mask = _np.all(
-            _np.array([_np.isfinite(locs[_]) for _ in locs.dtype.names]),
+            _np.array([_np.isfinite(locs[_]) for _ in fields_to_check]),
             axis=0,
         )
         invalid_mask = ~valid_mask
@@ -1038,7 +1057,7 @@ def _csv_numeric_column(
     return pd.Series(_np.full(len(data), default), index=data.index, dtype=_np.float64)
 
 
-def csv2hdf(path, pixelsize, sanity_config=None):
+def csv2hdf(path, pixelsize, sanity_config=None, passthrough_columns=None):
     """Convert a localization CSV to HDF5 for AIM drift correction.
 
     dSTORMQuant I/O adapter around the Picasso AIM HDF5 layout (see
@@ -1049,6 +1068,8 @@ def csv2hdf(path, pixelsize, sanity_config=None):
         path: Input CSV path; output is ``<stem>_locs.hdf5`` beside the input.
         pixelsize: Pixel size in nanometers used to convert coordinates to pixels.
         sanity_config: Optional sanity-check settings forwarded to :func:`save_locs`.
+        passthrough_columns: Optional extra CSV columns to keep as float32 fields
+            without unit conversion (e.g. ``LP_calculated``).
 
     Returns:
         Path to the written HDF5 file.
@@ -1131,6 +1152,13 @@ def csv2hdf(path, pixelsize, sanity_config=None):
             arrays.append(lp)
             dtype.append(("lp", "f4"))
 
+        # Passthrough columns
+        for col in passthrough_columns or ():
+            if col in data.columns and col not in {name for name, _ in dtype}:
+                values = _csv_numeric_column(data, (col,), default=_np.nan)
+                arrays.append(values)
+                dtype.append((col, "f4"))
+
         LOCS_DTYPE = dtype
 
         # Create record array using only available fields
@@ -1172,8 +1200,12 @@ def hdf2csv(path, new_info):
     locs = load_locs(path)[0]
     base, _ = os.path.splitext(path)
     out_path = base + ".csv"
-    # Select only fields that actually exist in the HDF5 dataset
-    available_fields = [f for f in ["x", "y", "photons", "frame", "sx", "sy", "bg", "pvalue", "channelIndex", "lp"] if f in locs.dtype.names]
+    # Select known fields plus any passthrough columns (e.g. LP_calculated)
+    known = ["x", "y", "photons", "frame", "sx", "sy", "bg", "pvalue", "channelIndex", "lp"]
+    available_fields = [f for f in known if f in locs.dtype.names]
+    for name in locs.dtype.names:
+        if name not in available_fields:
+            available_fields.append(name)
     locs = locs[available_fields].copy()
     pixel_size = new_info["PixelSize"]
     if "x" in locs.dtype.names:

@@ -376,7 +376,7 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 
 ### **channels**
 
-- `Ch1`/`Ch2`: Define color (hex) and label for each channel. Channel indices come from the metadata.
+- `Ch1`/`Ch2`: Plot color only (`color` as hex, e.g. `#FF00FF`). Channel indices and optional labels come from the metadata Excel (`first_channel_index` / `second_channel_index`, `first_channel_label` / `second_channel_label`).
 
 ### **visualization**
 
@@ -390,15 +390,9 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 - After a batch finishes, **`data/output/run_summary.txt`** (human-readable) and **`run_summary.json`** list each input CSV: status, failure reason if any, duration, and which filters were applied / skipped.
 - `sigma.min_value` / `sigma.max_value`, `intensity.min_value`, `localization_precision.threshold_value`, `p_value.threshold_value`: thresholds read only from YAML. The input localization CSV supplies measurements (e.g. sigma, photons, precision); it does not carry separate filter-parameter columns.
 
-### **cell_detection**
-
-- `use`: Set to `true` to enable cell detection.
-- `approach`: `"grid"` or `"vornoi"`.
-- `grid.grid_size`, `grid.high_density_threshold`: Grid-based cell detection parameters.
-
 ### **drift_correction**
 
-- `pixel_size`: Pixel size in nanometers (e.g., `117`). Used for converting between pixels and nanometers during drift correction.
+- `pixel_size`: Pixel size in nanometers (e.g., `117`). Used for converting between pixels and nanometers during drift correction (also used by **lp_calculation** when enabled).
 - `segmentation`: Number of segments for drift correction (e.g., `100`). The data is divided into this many segments for drift estimation.
 - `intersect_d_nm`: Intersection distance in nm for drift overlap calculation.
 - `roi_r_nm`: ROI radius in nm for drift estimation.
@@ -407,20 +401,45 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
   - `max_segment_drift_nm`: Maximum allowed drift per segment in nm; values above this are replaced.
   - `n_previous_segments`: Number of previous valid segments to average when replacing outliers.
 - **sanity_checks**: Post-drift filters applied to localizations.
-  - `remove_invalid_values`: Remove localizations with inf/nan values.
   - `filter_boundary`: Remove localizations with x≤0 or y≤0.
   - `filter_parameters`: Remove localizations with invalid sigma or localization precision (sx≤0, sy≤0, lp≤0).
-  - **Note**: The CSV→HDF conversion (`src/dSTORMQuant/processing/drift_correction/AIM.py::csv2hdf`) and AIM pipeline saves now respect the `drift_correction.sanity_checks` settings when the pipeline entry points are used. If code calls `csv2hdf()` or `save_locs()` directly without passing a `sanity_config`, those functions will still use their default behavior.
+  - Inf/NaN localizations are always removed (`remove_invalid_values` is forced `true` in code and is **not** a YAML key).
+  - **Note**: The CSV→HDF conversion (`src/dSTORMQuant/processing/drift_correction/AIM.py::csv2hdf`) and AIM pipeline saves respect `drift_correction.sanity_checks` when pipeline entry points are used. Direct calls to `csv2hdf()` / `save_locs()` without a `sanity_config` keep their default behavior.
+
+### **lp_calculation**
+
+Optional Mortensen localization-precision recalculation. When `use` is `true`, LP is recomputed at each major stage (initial, after drift, after filtering, after temporal grouping, after cell detection) into `output_column`; any original LP column is left unchanged. When `use` is `false` (default), this step is a no-op.
+
+- `use`: Enable/disable recalculation.
+- `method`: `"mle"` (Mortensen Eq. 5) or `"lsq"` (Eq. 6).
+- `emccd`: If `true`, apply EMCCD excess-noise factor 2.
+- `bg_unit`: `"per_nm2"` or `"per_pixel"` — units of the background column.
+- `sigma_mode`: How to combine `sigma_x` / `sigma_y` when both are present: `"mean"`, `"geo"`, `"x"`, or `"y"`. If only a single `sigma` column is present, that value is used instead.
+- `output_column`: Name of the written precision column (default `LP_calculated`).
+- `columns`: Exact CSV headers for inputs (no aliases). Defaults match NimOS-style names: `intensity (photons)`, `background (photons/nm^2)`, `sigma [nm]`, `sigmaX (nm)`, `sigmaY (nm)`. Missing required intensity/background columns abort that file when LP is enabled.
 
 ### **temporal_grouping**
 
 - `use`: Set to `true` to run temporal grouping; `false` to skip (filtered data is passed through).
 - `max_frame_gap`, `max_distance_nm`, `min_duration`, `max_duration`: temporal grouping parameters when `use` is true (defaults: `2`, `50`, `1`, `50`).
 
+### **cell_detection**
+
+- `use`: Set to `true` to enable cell detection.
+- `approach`: `"grid"` or `"vornoi"`.
+- `grid.grid_size`, `grid.high_density_threshold`: Grid-based cell detection parameters.
+- `vornoi.percentile`: Percentile used to clip extreme Voronoi areas before thresholding (default `99.0`; range 1.0–100.0).
+
+### **nearest_neighbor_analysis**
+
+- `use`: Set to `true` to run k-Nearest-Neighbor analysis (intra- and inter-channel distances).
+- `radius`, `k`, `algorithm`, `metric`: Radius (nm) for mean-within-radius; kNN parameters (defaults: `100`, `1`, `auto`, `euclidean`).
+
 ### **clustering**
 
 - `use`, `use_cluster_knn`: Enable clustering and cluster-center kNN analysis.
 - `ch1`/`ch2`: Per-channel settings.
+  - `use`: Set to `false` to skip clustering for that channel only.
   - `method`: `dbscan`, `hdbscan`, or `finder`.
   - **DBSCAN**: `dbscan.eps`, `dbscan.min_samples` (defaults: `100`, `10`).
   - **HDBSCAN**: `hdbscan.min_cluster_size`, `hdbscan.min_samples` (defaults: `10`, `10`).
@@ -430,11 +449,6 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 
 - `use`: Enable colocalization analysis.
 - `cbc.radius`, `cbc.n_steps`: Coordinate-Based Colocalization parameters (defaults: `100`, `10`). Relative enrichment (RE) runs when colocalization is enabled and has no separate YAML subsection.
-
-### **nearest_neighbor_analysis**
-
-- `use`: Set to `true` to run k-Nearest-Neighbor analysis (intra- and inter-channel distances).
-- `radius`, `k`, `algorithm`, `metric`: Radius (nm) for mean-within-radius; kNN parameters (defaults: `100`, `1`, `auto`, `euclidean`).
 
 > **Tip:** Each section in `config.yaml` is documented with comments. Adjust values as needed for your experiment.
 

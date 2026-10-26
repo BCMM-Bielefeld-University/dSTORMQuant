@@ -13,13 +13,11 @@ This file documents **provenance**, **what dSTORMQuant changed**, and **whether 
 **Source (Python port):** Picasso `picasso.aim` — [jungmannlab/picasso](https://github.com/jungmannlab/picasso) (Schnitzbauer *et al.*, 2017; Jungmann Lab, MPI of Biochemistry)  
 **Paths in this repo:**
 
-
 | Component                 | Path                                                   |
 | ------------------------- | ------------------------------------------------------ |
 | Adapted AIM module        | `src/dSTORMQuant/processing/drift_correction/AIM.py`   |
 | Per-file AIM driver       | `src/dSTORMQuant/processing/drift_correction/drift.py` |
 | Dual-channel registration | `src/dSTORMQuant/core/pipeline.py`                     |
-
 
 **License:** See Picasso / Jungmann Lab notice in [THRID-PARTY LICENSE.txt](./THRID-PARTY%20LICENSE.txt) and the copyright header in `AIM.py`.
 
@@ -29,26 +27,25 @@ This file documents **provenance**, **what dSTORMQuant changed**, and **whether 
 - Optional localization sanity filters before AIM
 - Optional segment drift validation: replace segments whose relative drift exceeds a nm threshold with the mean of preceding valid segments
 - Dual-channel workflow (pipeline): undrift each channel independently, then subtract cumulative channel-1 drift from channel-2 coordinates
-- **FFT peak bin→pixel conversion (intentional dSTORMQuant / published-pipeline choice):**  
-  `get_fft_peak(roi_cc, 2 * roi_r)` scales peak bins by `(2 * roi_r) / box` (FOV/N using the search diameter).  
-  YangLiuLab MATLAB AIM scales by `IntersectD`; current Picasso scales by `intersect_d` (bin spacing).  
-  These match only approximately; for typical `roi_r = 3 * intersect_d` (`box = 7`) the ratio is `(box-1)/box = 6/7`.  
-  Comments live in `AIM.py` (`get_fft_peak`, call site in `intersection_max`).
+- **FFT peak bin→pixel conversion:**  
+`get_fft_peak(roi_cc, 2 * roi_r)` scales peak bins by `(2 * roi_r) / box` (FOV/N using the search diameter).  
+YangLiuLab MATLAB AIM scales by `IntersectD`; current Picasso scales by `intersect_d` (bin spacing).  
+These match only approximately; for typical `roi_r = 3 * intersect_d` (`box = 7`) the ratio is `(box-1)/box = 6/7`.
 
 ### Effect on results
 
-- Core AIM undrift is **related to** Picasso / MATLAB AIM but **not bit-identical**, even with drift validation **off**, mainly because of the FFT peak scaling above (and vs recent Picasso: no round-2 `exclude_self`, frame-0 drift zeroing instead of mean-centering)
-- Enabling segment validation **can change** the drift trace and corrected coordinates
-- Dual-channel cumulative-drift transfer **changes** channel-2 absolute coordinates relative to running AIM on each channel alone; it does not re-run AIM
+- Core AIM undrift is related to Picasso / MATLAB AIM but is not bit-identical, even when drift validation is off.
+- Corrected coordinates can differ slightly because this port converts the AIM correlation peak to a drift shift with a different scale factor than MATLAB AIM or current Picasso; see the FFT peak conversion note above.
+- Recent Picasso can ignore a localization’s self-match in a second AIM pass; this port does not, so the estimated drift can differ slightly on the same data.
+- This port forces drift at the first frame to zero. Recent Picasso instead subtracts the mean of the whole drift curve, so absolute positions can sit on a different offset even when relative undrift looks similar.
+- Enabling segment validation can change the drift trace and the corrected coordinates.
+- Dual-channel cumulative-drift transfer changes channel-2 absolute coordinates relative to running AIM on each channel alone. It does not re-run AIM.
 
 ### Validation
 
 - Qualitative QC via Napari / drift plots in the pipeline
-- Optional offline runners: `aim_drift_dSTORMQuant.py` (this module) and `aim_drift_picasso.py` (Picasso `aim.aim` API, as in `sample_notebook_2_basic_analysis.ipynb`)
 
 ---
-
-
 
 ## Coordinate-based colocalization (CBC) via locan
 
@@ -56,12 +53,10 @@ This file documents **provenance**, **what dSTORMQuant changed**, and **whether 
 **Source:** `[locan](https://github.com/super-resolution/Locan)` / LOCAN (Doose, 2022) — `CoordinateBasedColocalization`  
 **Path in this repo:** `src/dSTORMQuant/analysis/colocalization/CBC.py`
 
-
 | Piece              | Role                                                                     |
 | ------------------ | ------------------------------------------------------------------------ |
 | `CBC.py`           | Thin wrapper: column rename, bidirectional orchestration, plot packaging |
 | `locan` dependency | CBC estimator                                                            |
-
 
 **License:** BSD 3-Clause License (locan) — full text in [THRID-PARTY LICENSE.txt](./THRID-PARTY%20LICENSE.txt) §1.
 
@@ -70,16 +65,11 @@ This file documents **provenance**, **what dSTORMQuant changed**, and **whether 
 - Rename `x`/`y` → `position_x`/`position_y` for locan
 - Bidirectional Ch1↔Ch2 orchestration and packaging of results for plotting
 
-
-
 ### Effect on results
 
-- Wrapper changes should not alter CBC scores for the same points, radius, and `n_steps`
-
+- Wrapper changes must not alter CBC scores for the same points, radius, and `n_steps`
 
 ---
-
-
 
 ## Relative enrichment (Ejdrup)
 
@@ -88,12 +78,10 @@ This file documents **provenance**, **what dSTORMQuant changed**, and **whether 
 **Author (upstream):** Aske Lykke Ejdrup  
 **Paths in this repo:**
 
-
 | Component                   | Path                                                                            |
 | --------------------------- | ------------------------------------------------------------------------------- |
 | Upstream RE core            | `src/dSTORMQuant/analysis/colocalization/RE_function.py`                        |
 | Pipeline wrapper            | `src/dSTORMQuant/analysis/colocalization/relative_enrichment_colocalization.py` |
-
 
 **License:** MIT License
 
@@ -128,18 +116,12 @@ Also listed in [THRID-PARTY LICENSE.txt](./THRID-PARTY%20LICENSE.txt) §18.
 - Retained the MIT license header on `RE_function.py`
 - Pipeline wrapper: dual-channel direction handling, FOV normalization for expected counts, scatter-plot export, DataFrame packaging
 
-
-
 ### Effect on results
 
 - Core `relative_enrichment` / related helpers in `RE_function.py` are upstream logic
 - Expected-count normalization and plotting in the wrapper are pipeline-specific and define how RE values are reported in dSTORMQuant outputs
 
-
-
 ---
-
-
 
 ## FINDER (C++ port)
 
@@ -147,14 +129,12 @@ Also listed in [THRID-PARTY LICENSE.txt](./THRID-PARTY%20LICENSE.txt) §18.
 **Source (original Python):** [https://github.com/NoldAndreas/FINDER](https://github.com/NoldAndreas/FINDER) (Andreas Nold and colleagues)  
 **Paths in this repo:**
 
-
 | Component                | Path                                                                               |
 | ------------------------ | ---------------------------------------------------------------------------------- |
 | C++ port + CLI           | `finder_cpp/`                                                                      |
 | Python bindings          | `finder_cpp` / `finder_bindings.cpp`                                               |
 | Pipeline entry           | `cluster_with_finder` in `src/dSTORMQuant/analysis/clustering/cluster_analysis.py` |
 | Spatial index (vendored) | `finder_cpp/third_party/nanoflann/`                                                |
-
 
 **License:** MIT License (original FINDER and this C++ port)
 
@@ -190,14 +170,10 @@ C++ port copyright (c) 2026 Suraj Karki, Biochemistry and Molecular Medicine —
 - pybind11 bindings and YAML-configured parameters in dSTORMQuant
 - Uses nanoflann for spatial indexing (see `finder_cpp/third_party/`)
 
-
-
 ### Effect on results
 
 - Designed as a fast implementation of the published FINDER method.
 - Differences in programming languages may lead to numerical or labeling differences from the original Python code. Equivalence must be verified.
-
-
 
 ### Validation
 
@@ -206,33 +182,26 @@ C++ port copyright (c) 2026 Suraj Karki, Biochemistry and Molecular Medicine —
 
 ---
 
-
-
 ## DBSCAN / HDBSCAN (scikit-learn)
 
 **Algorithms:** DBSCAN (Ester *et al.*, 1996); HDBSCAN (Campello *et al.*, 2015)  
 **Source:** [scikit-learn](https://scikit-learn.org/) — `sklearn.cluster.DBSCAN`, `sklearn.cluster.HDBSCAN`  
 **Path in this repo:** `src/dSTORMQuant/analysis/clustering/cluster_analysis.py`
 
-
 | Piece                 | Role                                            |
 | --------------------- | ----------------------------------------------- |
 | scikit-learn          | Clustering implementation                       |
 | `cluster_analysis.py` | Per-channel orchestration, config, stats export |
 
-
 **License:** BSD 3-Clause License (scikit-learn) — see the scikit-learn distribution / project license; dependency license notices also appear under related scientific stack entries in [THRID-PARTY LICENSE.txt](./THRID-PARTY%20LICENSE.txt).
 
 ### What we changed
+
 - Per-channel orchestration, config-driven parameters, cluster statistics and export
-
-
 
 ### Effect on results
 
 - **No reimplementation**
-
-
 
 ### Validation
 
@@ -240,15 +209,11 @@ C++ port copyright (c) 2026 Suraj Karki, Biochemistry and Molecular Medicine —
 
 ---
 
-
-
 ## Other third-party dependencies
 
 Runtime and build dependencies (e.g. locan, napari, matplotlib, pandas, scipy, h5py, pybind11, nanoflann) retain their own licenses. Full notices: [THRID-PARTY LICENSE.txt](./THRID-PARTY%20LICENSE.txt).
 
 ---
-
-
 
 ## Original content
 
@@ -264,8 +229,6 @@ The following are original or primarily original work of the dSTORMQuant authors
 Third-party attributions remain in effect for all reused or adapted components regardless of the project license.
 
 ---
-
-
 
 ## Our license
 

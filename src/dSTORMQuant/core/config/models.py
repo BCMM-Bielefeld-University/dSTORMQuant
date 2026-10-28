@@ -321,6 +321,37 @@ class SanityChecksConfig(BaseModel):
     filter_parameters: bool = Field(..., description="Remove sx<=0, sy<=0, or lp<=0")
 
 
+class AimOptionsConfig(BaseModel):
+    """AIM implementation options.
+
+    Defaults retain the current dSTORMQuant behaviour.
+    """
+
+    fft_peak_scale: Literal["search_diameter", "intersect_d"] = Field(
+        default="search_diameter",
+        description=(
+            "Mapping of FFT peak bins to camera pixels: "
+            "'search_diameter' or "
+            "'intersect_d'"
+        ),
+    )
+    exclude_self_round2: bool = Field(
+        default=False,
+        description=(
+            "If true, exclude each segment from the reference during AIM "
+            "round 2. If false, retain the full reference "
+        ),
+    )
+    drift_reference: Literal["frame0", "mean"] = Field(
+        default="frame0",
+        description=(
+            "Anchoring of the combined drift curve: "
+            "'frame0' zeros drift at the first frame; "
+            "'mean' mean-centres the curve"
+        ),
+    )
+
+
 class DriftCorrectionConfig(BaseModel):
     """Drift correction parameters."""
 
@@ -330,6 +361,13 @@ class DriftCorrectionConfig(BaseModel):
         ..., gt=0, description="Intersection distance in nanometers"
     )
     roi_r_nm: float = Field(..., gt=0, description="ROI radius in nanometers")
+    aim_options: AimOptionsConfig = Field(
+        default_factory=AimOptionsConfig,
+        description=(
+            "AIM options"
+            "(FFT scale, round-2 self-exclusion, drift anchoring)"
+        ),
+    )
     drift_validation: DriftValidationConfig = Field(
         ..., description="Drift validation settings"
     )

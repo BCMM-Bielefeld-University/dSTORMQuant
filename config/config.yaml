@@ -88,6 +88,12 @@ drift_correction:
   intersect_d_nm: 20           # Intersection distance in nanometers
   roi_r_nm: 60                 # ROI radius in nanometers
 
+  # AIM implementation options relative to upstream Picasso AIM
+  aim_options:
+    fft_peak_scale: "search_diameter"  # "search_diameter" (dSTORMQuant) | "intersect_d" (Picasso AIM)
+    exclude_self_round2: false         # false (dSTORMQuant) | true (Picasso AIM)
+    drift_reference: "frame0"          # "frame0" (dSTORMQuant) | "mean" (Picasso AIM)
+
   # Drift validation and replacement parameters
   drift_validation:
     use: false                        # Enable detection and replacement of unrealistic drift values

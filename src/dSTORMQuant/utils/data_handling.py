@@ -27,8 +27,27 @@ class AxialDataNotSupportedError(ValueError):
 
 
 def read_localization_csv(file_path: str | Path) -> pd.DataFrame:
-    """Read a localization CSV using pandas' default (C) parser."""
-    return pd.read_csv(Path(file_path))
+    """Read a localization CSV using pandas' C parser.
+
+    Uses compact dtypes for known columns when present to reduce peak memory
+    on large AIM/Dryad tables (tens of millions of rows).
+    """
+    path = Path(file_path)
+    # Probe headers only so we can set dtypes without loading the full file twice
+    # as object/float64.
+    header = pd.read_csv(path, nrows=0)
+    dtype: dict[str, str] = {}
+    for col in header.columns:
+        key = str(col).strip().lower()
+        if key in {"frameindex", "frame"}:
+            dtype[col] = "int32"
+        elif key in {"channelindex", "channel"}:
+            dtype[col] = "int16"
+        elif key in {"x (nm)", "y (nm)", "z (nm)", "x", "y", "z"}:
+            dtype[col] = "float32"
+        elif "(nm)" in key or "photon" in key or key in {"lp", "bg", "pvalue"}:
+            dtype[col] = "float32"
+    return pd.read_csv(path, dtype=dtype or None)
 
 
 def find_axial_columns(columns: pd.Index | list[str]) -> list[str]:

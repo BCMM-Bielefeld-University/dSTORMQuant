@@ -372,6 +372,7 @@ def apply_drift_correction(
 
     sanity_config = drift_correction_config["sanity_checks"]
     drift_validation_config = drift_correction_config["drift_validation"]
+    aim_options = drift_correction_config.get("aim_options") or {}
 
     intersect_d_pixels = intersect_d_nm / pixel_size
     roi_r_pixels = roi_r_nm / pixel_size
@@ -380,6 +381,12 @@ def apply_drift_correction(
 
     logger.info(
         f"Drift correction parameters: intersect_d={intersect_d_nm}nm ({intersect_d_pixels:.4f} pixels), roi_r={roi_r_nm}nm ({roi_r_pixels:.4f} pixels)"
+    )
+    logger.info(
+        "AIM options: fft_peak_scale=%s, exclude_self_round2=%s, drift_reference=%s",
+        aim_options.get("fft_peak_scale", "search_diameter"),
+        aim_options.get("exclude_self_round2", False),
+        aim_options.get("drift_reference", "frame0"),
     )
 
     if drift_validation_config.get("use"):
@@ -404,6 +411,7 @@ def apply_drift_correction(
         roi_r_pixels,
         sanity_config=sanity_config,
         drift_validation_config=drift_validation_config,
+        aim_options=aim_options,
         passthrough_columns=passthrough_columns or None,
     )
     df_ch1_drift_corrected = load_data(undrift_df_ch1_path)
@@ -425,6 +433,7 @@ def apply_drift_correction(
             roi_r_pixels,
             sanity_config=sanity_config,
             drift_validation_config=drift_validation_config,
+            aim_options=aim_options,
             passthrough_columns=passthrough_columns or None,
         )
         df_ch2_drift_corrected = load_data(undrift_df_ch2_path)

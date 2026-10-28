@@ -16,16 +16,20 @@ dSTORMQuant adaptations (Suraj Karki, Bielefeld University)
     - CSV/HDF5 I/O and logging for this pipeline's localization schema
     - Optional localization sanity filters before AIM
     - Optional segment drift validation/replacement (see validate_and_replace_drift)
-    - FFT peak bin→pixel scale uses (2*roi_r)/box (FOV/N), not MATLAB
-      IntersectD / current Picasso intersect_d (see get_fft_peak)
+    - Configurable AIM options via drift_correction.aim_options:
+        fft_peak_scale, exclude_self_round2, drift_reference
+      Defaults retain the current dSTORMQuant behaviour
+      (search_diameter / exclude_self off / frame0).
+      Upstream Picasso AIM counterparts:
+      intersect_d / exclude_self on / mean.
     Dual-channel registration (independent undrift + cumulative Ch1→Ch2 drift
     transfer) lives in core/pipeline.py, not in the AIM core loop.
 
 Effect on results
-    Core AIM undrift is related to Picasso/MATLAB AIM but is not bit-identical:
-    FFT peak scaling and (vs recent Picasso) lack of exclude_self / mean-centering
-    can change drift and coordinates. Segment validation and dual-channel transfer
-    are additional pipeline-specific changes.
+    Default aim_options are not bit-identical to upstream Picasso AIM.
+    Selecting the Picasso AIM counterparts above aligns those numerical
+    choices. Segment validation and dual-channel transfer remain
+    pipeline-specific.
 
 Full change log: ATTRIBUTION.md.
 """
@@ -382,6 +386,38 @@ def get_fft_peak(roi_cc, roi_size):
     return px, py
 
 
+def estimate_fft_peak(roi_cc, *, fft_peak_scale, intersect_d, roi_r):
+    """Map AIM correlation-peak bins to camera pixels.
+
+    ``search_diameter`` (dSTORMQuant default): scale by ``(2 * roi_r) / box``.
+    ``intersect_d``: scale by ``intersect_d`` per bin.
+    """
+    fft_values = _np.fft.fft2(roi_cc.T)
+    ang_x = _np.angle(fft_values[0, 1])
+    ang_x = ang_x - 2 * _np.pi * (ang_x > 0)
+    px_bins = (
+        _np.abs(ang_x) / (2 * _np.pi / roi_cc.shape[0]) - (roi_cc.shape[0] - 1) / 2
+    )
+    ang_y = _np.angle(fft_values[1, 0])
+    ang_y = ang_y - 2 * _np.pi * (ang_y > 0)
+    py_bins = (
+        _np.abs(ang_y) / (2 * _np.pi / roi_cc.shape[1]) - (roi_cc.shape[1] - 1) / 2
+    )
+
+    if fft_peak_scale == "search_diameter":
+        px = px_bins * (2 * roi_r) / roi_cc.shape[0]
+        py = py_bins * (2 * roi_r) / roi_cc.shape[1]
+    elif fft_peak_scale == "intersect_d":
+        px = px_bins * intersect_d
+        py = py_bins * intersect_d
+    else:
+        raise ValueError(
+            f"Unknown fft_peak_scale={fft_peak_scale!r}; "
+            "expected 'search_diameter' or 'intersect_d'"
+        )
+    return px, py
+
+
 def intersection_max(
     x,
     y,
@@ -393,6 +429,8 @@ def intersection_max(
     roi_r,
     width,
     aim_round=1,
+    fft_peak_scale="search_diameter",
+    exclude_self=False,
 ):
     """Maximize intersection (undrift) for 2D localizations.
 
@@ -423,6 +461,12 @@ def intersection_max(
         as reference, the second round uses the entire dataset as
         reference. The impact is that in the second round, the first
         interval is also undrifted.
+    fft_peak_scale : {"search_diameter", "intersect_d"}
+        FFT peak bin→pixel conversion mode.
+    exclude_self : bool
+        If True, leave each segment out of the reference while that
+        segment is aligned. Only valid when reference is the dataset
+        itself (AIM round 2).
 
     Returns
     -------
@@ -477,6 +521,20 @@ def intersection_max(
     l0 = _np.int32(x0_units + y0_units * width_units)  # 1d list
     l0_coords, l0_counts = _np.unique(l0, return_counts=True)
 
+    # Per-localization reference encoding for Picasso-like exclude_self
+    l0_by_point = None
+    if exclude_self:
+        l_target = _np.int32(
+            _np.round(_np.asarray(x) / intersect_d)
+            + _np.round(_np.asarray(y) / intersect_d) * width_units
+        )
+        if not _np.array_equal(l0, l_target):
+            raise ValueError(
+                "exclude_self requires the reference to be the target itself, "
+                "but ref_x/ref_y differ from x/y."
+            )
+        l0_by_point = l_target
+
     # initialize progress such that if GUI is used, tqdm is omitted
     start_idx = 1 if aim_round == 1 else 0
 
@@ -491,20 +549,29 @@ def intersection_max(
         # get the target localizations within the current segment
         min_frame_idx = frame > seg_bounds[s]
         max_frame_idx = frame <= seg_bounds[s + 1]
-        x1 = x[min_frame_idx & max_frame_idx]
-        y1 = y[min_frame_idx & max_frame_idx]
+        seg_mask = min_frame_idx & max_frame_idx
+        x1 = x[seg_mask]
+        y1 = y[seg_mask]
 
         # skip if no reference localizations
         if len(x1) == 0:
-            drift_x[s] = drift_x[s - 1]
-            drift_y[s] = drift_y[s - 1]
+            drift_x[s] = drift_x[s - 1] if s > 0 else 0
+            drift_y[s] = drift_y[s - 1] if s > 0 else 0
             relative_drift_x[s] = 0
             relative_drift_y[s] = 0
             continue
 
         # undrifting from the previous round
-        x1 += rel_drift_x
-        y1 += rel_drift_y
+        x1 = x1 + rel_drift_x
+        y1 = y1 + rel_drift_y
+
+        # Picasso-like: leave this segment out of the reference counts
+        own_pos = None
+        own_counts = None
+        if exclude_self:
+            own, own_counts = _np.unique(l0_by_point[seg_mask], return_counts=True)
+            own_pos = _np.searchsorted(l0_coords, own)
+            l0_counts[own_pos] -= own_counts
 
         # count the number of intersected localizations
         roi_cc = point_intersect_2d(
@@ -518,8 +585,21 @@ def intersection_max(
             box,
         )
 
-        # FFT peak: pass search diameter so scale = (2*roi_r)/box (FOV/N).
-        px, py = get_fft_peak(roi_cc, 2 * roi_r)
+        if exclude_self:
+            l0_counts[own_pos] += own_counts
+            if not roi_cc.any():
+                drift_x[s] = drift_x[s - 1] if s > 0 else 0
+                drift_y[s] = drift_y[s - 1] if s > 0 else 0
+                relative_drift_x[s] = 0
+                relative_drift_y[s] = 0
+                continue
+
+        px, py = estimate_fft_peak(
+            roi_cc,
+            fft_peak_scale=fft_peak_scale,
+            intersect_d=intersect_d,
+            roi_r=roi_r,
+        )
 
         # Store relative drift (the frame-to-frame shift)
         relative_drift_x[s] = -px
@@ -584,6 +664,31 @@ def intersection_max(
     )
 
 
+def _apply_drift_reference(drift_x, drift_y, x_pdc, y_pdc, drift_reference):
+    """Anchor the combined drift curve and keep coordinates consistent.
+
+    ``frame0`` (dSTORMQuant default): subtract drift at the first frame from
+    the drift arrays.
+    ``mean`` (Picasso AIM): mean-centre the drift and add the same offset back
+    to the undrifted coordinates.
+    """
+    if drift_reference == "frame0":
+        drift_x = drift_x - drift_x[0]
+        drift_y = drift_y - drift_y[0]
+        return drift_x, drift_y, x_pdc, y_pdc
+    if drift_reference == "mean":
+        shift_x = _np.mean(drift_x)
+        shift_y = _np.mean(drift_y)
+        drift_x = drift_x - shift_x
+        drift_y = drift_y - shift_y
+        x_pdc = x_pdc + shift_x
+        y_pdc = y_pdc + shift_y
+        return drift_x, drift_y, x_pdc, y_pdc
+    raise ValueError(
+        f"Unknown drift_reference={drift_reference!r}; expected 'frame0' or 'mean'"
+    )
+
+
 def aim(
     locs,
     info,
@@ -591,6 +696,7 @@ def aim(
     intersect_d,
     roi_r,
     drift_validation_config=None,
+    aim_options=None,
 ):
     """Apply AIM undrifting to the localizations.
 
@@ -611,6 +717,10 @@ def aim(
         Configuration for drift validation. Should contain:
         - enable: bool
         - max_segment_drift_nm: float
+    aim_options : dict, optional
+        Optional AIM options: ``fft_peak_scale``, ``exclude_self_round2``,
+        ``drift_reference``. Defaults retain the current dSTORMQuant
+        behaviour; Picasso AIM counterparts are available.
     progress : picasso.lib.ProgressDialog (default=None)
         Progress dialog. If None, progress is displayed with into the
         console.
@@ -626,6 +736,11 @@ def aim(
     drift_tables : dict
         Dictionary containing segment drift and relative drift tables.
     """
+
+    aim_options = aim_options or {}
+    fft_peak_scale = aim_options.get("fft_peak_scale", "search_diameter")
+    exclude_self_round2 = bool(aim_options.get("exclude_self_round2", False))
+    drift_reference = aim_options.get("drift_reference", "frame0")
 
     # extract metadata
     width = _np.nan
@@ -658,6 +773,13 @@ def aim(
     ref_x = locs["x"][frame <= segmentation]
     ref_y = locs["y"][frame <= segmentation]
 
+    logger.info(
+        "AIM options: fft_peak_scale=%s, exclude_self_round2=%s, drift_reference=%s",
+        fft_peak_scale,
+        exclude_self_round2,
+        drift_reference,
+    )
+
     ### RUN AIM TWICE ###
     # the first run is with the first interval as reference
     (
@@ -680,6 +802,8 @@ def aim(
         roi_r,
         width,
         aim_round=1,
+        fft_peak_scale=fft_peak_scale,
+        exclude_self=False,
     )
     # the second run is with the entire dataset as reference
     (
@@ -702,17 +826,17 @@ def aim(
         roi_r,
         width,
         aim_round=2,
+        fft_peak_scale=fft_peak_scale,
+        exclude_self=exclude_self_round2,
     )
 
     # add the drifts together from the two rounds
     drift_x = drift_x1 + drift_x2
     drift_y = drift_y1 + drift_y2
 
-    # Zero the drift (set first frame as reference)
-    # Comment the following lines to disable drift zeroing
-    # This sets drift[0] = 0, making all drift relative to the first frame
-    drift_x = drift_x - drift_x[0]
-    drift_y = drift_y - drift_y[0]
+    drift_x, drift_y, x_pdc, y_pdc = _apply_drift_reference(
+        drift_x, drift_y, x_pdc, y_pdc, drift_reference
+    )
 
     # Combine segment drifts from both rounds
     segment_drift_x = seg_drift_x1 + seg_drift_x2
@@ -783,9 +907,15 @@ def aim(
             drift_x = drift_x_pol(t_inter)
             drift_y = drift_y_pol(t_inter)
 
-            # Re-apply drift to localizations
+            # Re-apply drift to localizations from rebuilt segment curve.
+            # frame0: keep historical dSTORMQuant behaviour (no second anchor).
+            # mean: re-apply Picasso AIM mean-centring after the rebuild.
             x_pdc = locs.x - drift_x[frame - 1]
             y_pdc = locs.y - drift_y[frame - 1]
+            if drift_reference == "mean":
+                drift_x, drift_y, x_pdc, y_pdc = _apply_drift_reference(
+                    drift_x, drift_y, x_pdc, y_pdc, drift_reference
+                )
 
     drift_x = _np.asarray(drift_x)
     drift_y = _np.asarray(drift_y)
@@ -830,6 +960,9 @@ def aim(
         "Intersect distance (nm)": intersect_d * pixelsize,
         "Segmentation": segmentation,
         "Search regions radius (nm)": roi_r * pixelsize,
+        "AIM fft_peak_scale": fft_peak_scale,
+        "AIM exclude_self_round2": exclude_self_round2,
+        "AIM drift_reference": drift_reference,
     }
 
     return locs, new_info, drift, drift_tables

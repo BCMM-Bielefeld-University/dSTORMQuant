@@ -27,17 +27,15 @@ This file documents **provenance**, **what dSTORMQuant changed**, and **whether 
 - Optional localization sanity filters before AIM
 - Optional segment drift validation: replace segments whose relative drift exceeds a nm threshold with the mean of preceding valid segments
 - Dual-channel workflow (pipeline): undrift each channel independently, then subtract cumulative channel-1 drift from channel-2 coordinates
-- **FFT peak bin→pixel conversion:**  
-`get_fft_peak(roi_cc, 2 * roi_r)` scales peak bins by `(2 * roi_r) / box` (FOV/N using the search diameter).  
-YangLiuLab MATLAB AIM scales by `IntersectD`; current Picasso scales by `intersect_d` (bin spacing).  
-These match only approximately; for typical `roi_r = 3 * intersect_d` (`box = 7`) the ratio is `(box-1)/box = 6/7`.
+- **Configurable AIM implementation options** via `drift_correction.aim_options` in `config.yaml` (defaults retain the current dSTORMQuant behaviour):
+  - `fft_peak_scale: search_diameter` — scales FFT peak bins by `(2 * roi_r) / box`. Use `intersect_d` for the upstream Picasso AIM convention.
+  - `exclude_self_round2: false` — round 2 retains the full reference. Use `true` for the Picasso AIM leave-one-segment-out procedure.
+  - `drift_reference: frame0` — anchors the drift curve at the first frame. Use `mean` for Picasso AIM mean-centring.
 
 ### Effect on results
 
-- Core AIM undrift is related to Picasso / MATLAB AIM but is not bit-identical, even when drift validation is off.
-- Corrected coordinates can differ slightly because this port converts the AIM correlation peak to a drift shift with a different scale factor than MATLAB AIM or current Picasso; see the FFT peak conversion note above.
-- Recent Picasso can ignore a localization’s self-match in a second AIM pass; this port does not, so the estimated drift can differ slightly on the same data.
-- This port forces drift at the first frame to zero. Recent Picasso instead subtracts the mean of the whole drift curve, so absolute positions can sit on a different offset even when relative undrift looks similar.
+- Under default `aim_options`, undrift remains related to Picasso AIM but is not bit-identical, even with drift validation disabled.
+- Selecting `fft_peak_scale: intersect_d`, `exclude_self_round2: true`, and `drift_reference: mean` aligns these three numerical choices with upstream Picasso AIM.
 - Enabling segment validation can change the drift trace and the corrected coordinates.
 - Dual-channel cumulative-drift transfer changes channel-2 absolute coordinates relative to running AIM on each channel alone. It does not re-run AIM.
 

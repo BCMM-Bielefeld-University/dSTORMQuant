@@ -396,6 +396,10 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 - `segmentation`: Number of segments for drift correction (e.g., `100`). The data is divided into this many segments for drift estimation.
 - `intersect_d_nm`: Intersection distance in nm for drift overlap calculation.
 - `roi_r_nm`: ROI radius in nm for drift estimation.
+- **aim_options**: Implementation choices relative to upstream Picasso AIM. Defaults retain the current dSTORMQuant behaviour.
+  - `fft_peak_scale`: `"search_diameter"` (dSTORMQuant; scale by `(2×roi_r)/box`) or `"intersect_d"` (Picasso AIM).
+  - `exclude_self_round2`: `false` (dSTORMQuant) or `true` (Picasso AIM: exclude each segment from the reference during round 2).
+  - `drift_reference`: `"frame0"` (dSTORMQuant: zero the drift at the first frame) or `"mean"` (Picasso AIM: mean-centre the drift curve).
 - **drift_validation**: Detection and replacement of unrealistic drift values.
   - `use`: Set to `true` to enable drift validation.
   - `max_segment_drift_nm`: Maximum allowed drift per segment in nm; values above this are replaced.

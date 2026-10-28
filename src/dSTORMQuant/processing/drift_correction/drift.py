@@ -30,7 +30,9 @@ def apply_aim_drift(
     roi_r: float,
     sanity_config: dict[str, Any] | None = None,
     drift_validation_config: dict[str, Any] | None = None,
+    aim_options: dict[str, Any] | None = None,
     passthrough_columns: list[str] | tuple[str, ...] | None = None,
+    export_corrected_csv: bool = True,
 ) -> tuple[str, Any]:
     """
     Apply AIM drift correction to a localization dataset.
@@ -45,11 +47,14 @@ def apply_aim_drift(
         roi_r (float): Search region radius in pixels
         sanity_config (dict, optional): Configuration for sanity checks
         drift_validation_config (dict, optional): Configuration for drift validation
+        aim_options (dict, optional): FFT scale / exclude_self / drift anchor
         passthrough_columns: Extra CSV columns to keep through HDF5 I/O
             (e.g. ``LP_calculated``)
+        export_corrected_csv: If False, keep the drift-corrected HDF5 and skip
+            the large CSV export (useful for drift-only benchmarks).
 
     Returns:
-        tuple: (Path to the corrected CSV file, drift array)
+        tuple: (Path to the corrected CSV or HDF5 file, drift array)
     """
     try:
         logger.info(f"Starting AIM drift correction for file: {input_file_name}")
@@ -70,6 +75,7 @@ def apply_aim_drift(
             intersect_d=intersect_d,
             roi_r=roi_r,
             drift_validation_config=drift_validation_config,
+            aim_options=aim_options,
         )
 
         base, _ = os.path.splitext(input_file_name)
@@ -127,6 +133,13 @@ def apply_aim_drift(
             )
 
         plot_drift_data(drift_txt_path, output_dir, base, pixel_size)
+
+        if not export_corrected_csv:
+            logger.info(
+                "Skipped drift-corrected CSV export (export_corrected_csv=False); "
+                f"kept {drift_corrected_hdf5_path}"
+            )
+            return drift_corrected_hdf5_path, drift
 
         out_path: str = hdf2csv(drift_corrected_hdf5_path, new_info)
         os.remove(drift_corrected_hdf5_path)

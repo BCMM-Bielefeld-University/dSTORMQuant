@@ -1,21 +1,49 @@
 #!/usr/bin/env python3
+"""Run AIM drift correction with dSTORMQuant default AIM options.
+"""
 
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
-from pathlib import Path
-
 import pandas as pd
+
+from pathlib import Path
+from typing import Any
 
 from dSTORMQuant.processing.drift_correction.drift import apply_aim_drift
 from dSTORMQuant.visualization.visualization import save_napari_points_screenshot
 
-# Manual AIM defaults
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATASET_DIR = SCRIPT_DIR / "dataset"
+DEFAULT_OUT_DIR = SCRIPT_DIR / "output" / "aim_drift_dSTORMQuant"
+
 PIXEL_SIZE_NM = 117.0
 SEGMENTATION = 100
 INTERSECT_D_NM = 20.0
 ROI_R_NM = 60.0
+
+
+def _resolve_input(path: Path) -> Path:
+    """Resolve CSV path; bare names are looked up under scripts/dataset/."""
+    if path.exists():
+        return path.resolve()
+    for cand in (DATASET_DIR / path, DATASET_DIR / path.name):
+        if cand.exists():
+            return cand.resolve()
+    raise SystemExit(f"Input not found: {path} (also checked under {DATASET_DIR})")
+
+
+def _link_or_copy(src: Path, dst: Path) -> None:
+    """Prefer a hard link for large CSVs; fall back to copy."""
+    if dst.exists() or dst.is_symlink():
+        dst.unlink()
+    try:
+        dst.hardlink_to(src)
+    except OSError:
+        shutil.copy2(src, dst)
+
 SANITY_CHECKS = {
     "filter_boundary": True,
     "filter_parameters": True,
@@ -25,6 +53,11 @@ DRIFT_VALIDATION = {
     "use": False,
     "max_segment_drift_nm": 35.0,
     "n_previous_segments": 10,
+}
+AIM_OPTIONS = {
+    "fft_peak_scale": "search_diameter",
+    "exclude_self_round2": False,
+    "drift_reference": "frame0",
 }
 _CHANNEL_COLORS = ("cyan", "magenta", "yellow", "lime", "orange", "white")
 
@@ -63,6 +96,38 @@ def _save_napari(
         print(f"  napari -> {out_dir / filename}")
 
 
+def _short_stem(csv_path: Path, max_len: int = 40) -> str:
+    stem = csv_path.stem
+    return stem[:max_len].rstrip("_") if len(stem) > max_len else stem
+
+
+def _write_run_info(out_dir: Path, payload: dict[str, Any]) -> None:
+    path = out_dir / "run_info.json"
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(f"  run info -> {path}")
+
+
+def _list_drift_outputs(drift_corrected_dir: Path, base: str) -> list[str]:
+    names = [
+        f"{base}_after_drift_correction.csv",
+        f"{base}_aimdrift.txt",
+        f"{base}_drift_segments.csv",
+    ]
+    found: list[str] = []
+    for name in names:
+        p = drift_corrected_dir / name
+        if p.exists():
+            found.append(str(p))
+    parent = drift_corrected_dir.parent
+    for pattern in (
+        f"drift_correction_plot_{base}.png",
+        f"drift_correction_plot_{base}.svg",
+    ):
+        for p in parent.rglob(pattern):
+            found.append(str(p))
+    return found
+
+
 def run_one(
     csv_path: Path,
     out_dir: Path,
@@ -75,32 +140,50 @@ def run_one(
 ) -> str:
     intersect_d = intersect_d_nm / pixel_size
     roi_r = roi_r_nm / pixel_size
+    aim_options = dict(AIM_OPTIONS)
 
     print(
-        f"AIM (dSTORMQuant current): pixel={pixel_size} nm, "
+        f"AIM (dSTORMQuant defaults): pixel={pixel_size} nm, "
         f"segmentation={segmentation}, "
         f"intersect_d={intersect_d_nm} nm ({intersect_d:.4f} px), "
-        f"roi_r={roi_r_nm} nm ({roi_r:.4f} px)"
+        f"roi_r={roi_r_nm} nm ({roi_r:.4f} px), "
+        f"aim_options={aim_options}"
     )
 
-    stem = csv_path.stem
-    short = stem[:40].rstrip("_") if len(stem) > 40 else stem
-    file_out = out_dir / short
+    stem = _short_stem(csv_path)
+    file_out = out_dir / stem
     file_out.mkdir(parents=True, exist_ok=True)
-    (file_out / "drift_corrected").mkdir(parents=True, exist_ok=True)
+    drift_dir = file_out / "drift_corrected"
+    drift_dir.mkdir(parents=True, exist_ok=True)
 
     local_csv = file_out / "input.csv"
     if csv_path.resolve() != local_csv.resolve():
-        shutil.copy2(csv_path, local_csv)
+        _link_or_copy(csv_path, local_csv)
 
-    df_before = pd.read_csv(local_csv)
-    _save_napari(
-        df_before,
+    _write_run_info(
         file_out,
-        "napari_view_before_drift_correction.png",
-        first=True,
-        use_napari=use_napari,
+        {
+            "mode": "dSTORMQuant AIM defaults",
+            "input": str(csv_path.resolve()),
+            "pixel_size_nm": pixel_size,
+            "segmentation": segmentation,
+            "intersect_d_nm": intersect_d_nm,
+            "roi_r_nm": roi_r_nm,
+            "aim_options": aim_options,
+            "drift_validation": DRIFT_VALIDATION,
+            "sanity_checks": SANITY_CHECKS,
+        },
     )
+
+    if use_napari:
+        df_before = pd.read_csv(local_csv)
+        _save_napari(
+            df_before,
+            file_out,
+            "napari_view_before_drift_correction.png",
+            first=True,
+            use_napari=True,
+        )
 
     corrected_csv, _drift = apply_aim_drift(
         str(local_csv),
@@ -112,17 +195,25 @@ def run_one(
         roi_r,
         sanity_config=dict(SANITY_CHECKS),
         drift_validation_config=dict(DRIFT_VALIDATION),
+        aim_options=aim_options,
+        # Large Dryad tables: skip multi‑GB corrected CSV when Napari is off.
+        export_corrected_csv=use_napari,
     )
-    print(f"  drift-corrected CSV -> {corrected_csv}")
+    print(f"  drift-corrected output -> {corrected_csv}")
 
-    df_after = pd.read_csv(corrected_csv)
-    _save_napari(
-        df_after,
-        file_out / "drift_corrected",
-        "napari_view_after_drift_correction.png",
-        first=False,
-        use_napari=use_napari,
-    )
+    for path in _list_drift_outputs(drift_dir, local_csv.stem):
+        print(f"  output -> {path}")
+
+    # Avoid reloading multi‑GB corrected CSVs when Napari is disabled.
+    if use_napari:
+        df_after = pd.read_csv(corrected_csv)
+        _save_napari(
+            df_after,
+            drift_dir,
+            "napari_view_after_drift_correction.png",
+            first=False,
+            use_napari=True,
+        )
     return corrected_csv
 
 
@@ -135,13 +226,13 @@ def main() -> None:
         "inputs",
         nargs="+",
         type=Path,
-        help="one or more single-channel localization CSV files",
+        help="CSV name(s) under scripts/dataset/ or absolute/relative CSV path(s)",
     )
     parser.add_argument(
         "--out-dir",
         type=Path,
-        default=Path("data/output/aim_drift_dSTORMQuant"),
-        help="output root (default: data/output/aim_drift_dSTORMQuant)",
+        default=DEFAULT_OUT_DIR,
+        help=f"output root (default: {DEFAULT_OUT_DIR})",
     )
     parser.add_argument("--pixel", type=float, default=PIXEL_SIZE_NM)
     parser.add_argument("--segmentation", type=int, default=SEGMENTATION)
@@ -157,24 +248,26 @@ def main() -> None:
     out_dir = args.out_dir.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    inputs = [p.resolve() for p in args.inputs]
-    for p in inputs:
-        if not p.exists():
-            raise SystemExit(f"Input not found: {p}")
-        if p.suffix.lower() != ".csv":
-            raise SystemExit(f"Expected CSV, got: {p}")
+    csv_paths: list[Path] = []
+    for p in args.inputs:
+        resolved = _resolve_input(p)
+        if resolved.suffix.lower() != ".csv":
+            raise SystemExit(f"Expected CSV, got: {resolved}")
+        csv_paths.append(resolved)
 
     print(
-        f"AIM parameters (dSTORMQuant current, unmodified AIM):\n"
+        "AIM parameters (dSTORMQuant defaults):\n"
         f"  pixel_size={args.pixel} nm\n"
         f"  segmentation={args.segmentation}\n"
         f"  intersect_d_nm={args.intersect_d_nm}\n"
         f"  roi_r_nm={args.roi_r_nm}\n"
-        f"  FFT scale: (2*roi_r)/box  [as in AIM.py]\n"
-        f"  napari screenshots: {not args.no_napari}"
+        f"  aim_options={AIM_OPTIONS}\n"
+        f"  napari screenshots: {not args.no_napari}\n"
+        f"  dataset_dir={DATASET_DIR}\n"
+        f"  out_dir={out_dir}"
     )
 
-    for csv_path in inputs:
+    for csv_path in csv_paths:
         print(f"\n=== {csv_path.name} ===")
         run_one(
             csv_path,

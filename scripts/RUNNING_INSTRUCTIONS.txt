@@ -1,0 +1,176 @@
+================================================================================
+Instructions for AIM drift-correction evaluation
+================================================================================
+
+Purpose
+-------
+These steps convert the AIM paper datasets (Dryad), apply three AIM
+implementations, and—where ground truth is available—quantify drift
+estimation error.
+
+Working directory
+-----------------
+Execute all commands from the repository root (the directory that contains
+`scripts/` and `src/`):
+
+  dSTORMQuant/
+
+Required input files
+--------------------
+Place the Dryad MATLAB files in scripts/dataset/:
+
+  CTCF_MCF10A_DRB_6h.mat
+  Origami_PAINT.mat
+  simulationSMLM.mat
+
+
+--------------------------------------------------------------------------------
+Step 0. Install software dependencies
+--------------------------------------------------------------------------------
+
+1) Install dSTORMQuant in the active Python environment:
+
+  pip install -e .
+
+2) Install additional packages required by the AIM scripts:
+
+  pip install -r scripts/requirements.txt
+
+The file scripts/requirements.txt lists numpy, pandas, scipy, h5py, and
+picassosr (Picasso; required for the upstream Picasso AIM script).
+
+
+--------------------------------------------------------------------------------
+Step 1. Convert Dryad .mat files to CSV
+--------------------------------------------------------------------------------
+
+This step converts localization coordinates from camera pixels
+(pixel size = 100 nm) to CSV files with the columns:
+
+  frameIndex, x (nm), y (nm), channelIndex
+
+For simulationSMLM.mat, the known applied drift (driftXT, driftYT) is also
+written to:
+
+  scripts/dataset/simulationSMLM_groundtruth_drift_px.csv
+
+Command:
+
+  python scripts/prepare_aim_paper_csv.py
+
+Equivalent command:
+
+  python scripts/prepare_aim_paper_csv.py --from-mat
+
+Expected files in scripts/dataset/:
+
+  CTCF_MCF10A_DRB_6h.csv
+  Origami_PAINT.csv
+  simulationSMLM.csv
+  simulationSMLM_groundtruth_drift_px.csv
+
+
+--------------------------------------------------------------------------------
+Step 2. Run AIM drift correction
+--------------------------------------------------------------------------------
+
+For each selected CSV, this step runs three AIM variants:
+
+  1) dSTORMQuant (default AIM options)
+       → scripts/output/aim_drift_dSTORMQuant/
+
+  2) dSTORMQuant with Picasso AIM options
+       → scripts/output/aim_drift_picasso_via_dSTORMQuant/
+
+  3) Upstream Picasso AIM
+       → scripts/output/aim_drift_picasso/
+
+Common analysis parameters:
+
+  pixel size = 100 nm
+  segmentation = 50 frames
+  intersect_d = 20 nm
+  roi_r = 60 nm
+  Napari screenshots disabled (--no-napari)
+
+A) Run all default datasets (simulationSMLM, CTCF, Origami):
+
+  python scripts/run_aim_algorithms.py
+
+B) Run only the simulated dataset (recommended before Step 3):
+
+  python scripts/run_aim_algorithms.py --datasets simulationSMLM.csv
+
+C) Run a selected list of datasets:
+
+  python scripts/run_aim_algorithms.py --datasets simulationSMLM.csv CTCF_MCF10A_DRB_6h.csv
+
+D) Run a single AIM implementation on one CSV (optional):
+
+  python scripts/aim_drift_dSTORMQuant.py simulationSMLM.csv --pixel 100 --segmentation 50 --intersect-d-nm 20 --roi-r-nm 60 --no-napari
+
+  python scripts/aim_drift_picasso_via_dSTORMQuant.py simulationSMLM.csv --pixel 100 --segmentation 50 --intersect-d-nm 20 --roi-r-nm 60 --no-napari
+
+  python scripts/aim_drift_picasso.py simulationSMLM.csv --pixel 100 --segmentation 50 --intersect-d-nm 20 --roi-r-nm 60 --no-napari
+
+CSV file names are resolved under scripts/dataset/ unless a full path is given.
+
+Estimated drift trajectories (example for simulationSMLM):
+
+  scripts/output/aim_drift_dSTORMQuant/simulationSMLM/drift_corrected/input_aimdrift.txt
+  scripts/output/aim_drift_picasso_via_dSTORMQuant/simulationSMLM/drift_corrected/input_aimdrift.txt
+  scripts/output/aim_drift_picasso/simulationSMLM/drift_corrected/input_aimdrift.txt
+
+A summary of run parameters and wall-clock times is written to:
+
+  scripts/output/aim_backend_runs.json
+
+Note: simulationSMLM.csv is large (~84 million localizations). Runtime and
+memory requirements are correspondingly high. With --no-napari, the AIM
+scripts skip exporting the multi‑GB drift-corrected localization CSV and
+only keep drift tables / plots (plus HDF5 when using dSTORMQuant).
+
+
+--------------------------------------------------------------------------------
+Step 3. Evaluate estimated drift against ground truth
+--------------------------------------------------------------------------------
+
+NOTE: Quantitative comparison with ground truth is possible only for
+simulationSMLM. The authors of the AIM paper stored the applied drift
+(driftXT, driftYT) in simulationSMLM.mat. The experimental datasets
+(CTCF_MCF10A_DRB_6h and Origami_PAINT) do not include ground-truth drift;
+therefore Step 3 cannot be applied to those datasets.
+
+This step compares the drift estimated by each AIM implementation with the
+Dryad ground-truth drift in:
+
+  scripts/dataset/simulationSMLM_groundtruth_drift_px.csv
+
+Step 2 must have been completed for simulationSMLM (outputs under
+scripts/output/aim_drift_*/simulationSMLM/).
+
+Command:
+
+  python scripts/evaluate_drift_corrections.py
+
+Results:
+
+  scripts/output/aim_drift_residuals_vs_gt.csv
+  scripts/output/aim_drift_residuals_vs_gt.json
+
+Reported quantities include the root-mean-square error (RMSE) and the
+standard deviation of the residual drift (nm), after both trajectories are
+aligned so that the drift at frame 0 is zero.
+
+
+--------------------------------------------------------------------------------
+Minimal workflow for the simulated dataset
+--------------------------------------------------------------------------------
+
+  pip install -e .
+  pip install -r scripts/requirements.txt
+  python scripts/prepare_aim_paper_csv.py
+  python scripts/run_aim_algorithms.py --datasets simulationSMLM.csv
+  python scripts/evaluate_drift_corrections.py
+
+================================================================================

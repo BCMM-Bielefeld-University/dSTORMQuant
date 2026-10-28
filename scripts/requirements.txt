@@ -1,0 +1,10 @@
+# Extra Python packages for AIM drift scripts under scripts/
+# (install after dSTORMQuant itself: pip install -e .)
+#
+#   pip install -r scripts/requirements.txt
+#
+numpy>=1.24
+pandas>=2.0.0
+scipy>=1.15.3
+h5py>=3.14.0
+picassosr>=0.11.0

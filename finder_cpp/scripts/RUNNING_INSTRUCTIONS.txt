@@ -1,0 +1,139 @@
+================================================================================
+FINDER validation scripts
+================================================================================
+
+Location:  finder_cpp/scripts/
+  - run_cpp_finder.py      Run the C++ FINDER extension (this repository)
+  - run_pip_finder.py      Run the original Python FINDER (finder_smlm from PyPI)
+  - compare_clusters.py    Compare two clustering result CSVs or folders
+
+Example inputs:  finder_cpp/examples/*.csv
+  (columns include x, y; scripts default to -x x -y y)
+
+--------------------------------------------------------------------------------
+0. Prerequisites
+--------------------------------------------------------------------------------
+
+1) Open a terminal and go to the finder_cpp folder:
+
+     cd finder_cpp
+
+2) Use a Python 3.10+ environment with:
+     pandas, numpy, scipy, scikit-learn, matplotlib
+
+3) Install the C++ FINDER Python extension (needed for run_cpp_finder.py):
+
+     pip install -r requirements-build.txt
+     pip install pybind11
+     pip install -e . --no-build-isolation
+
+4) Install the original pip FINDER package (needed for run_pip_finder.py):
+
+     pip install finder_smlm
+
+--------------------------------------------------------------------------------
+1. Run C++ FINDER  (run_cpp_finder.py)
+--------------------------------------------------------------------------------
+
+From finder_cpp/:
+
+  # All CSVs in examples/  →  results_cpp/
+  python scripts/run_cpp_finder.py examples -o results_cpp
+
+  # Single file
+  python scripts/run_cpp_finder.py examples/FGFR1_MCF7_AF647_1.csv -o results_cpp
+
+Outputs (one per input):
+  results_cpp/<stem>_cpp_clusters.csv     columns: x, y, cluster
+  results_cpp/total_time.txt              end-to-end runtime
+
+Optional:
+  -x / --x-col NAME     X column (default: x)
+  -y / --y-col NAME     Y column (default: y)
+  -o / --output-dir DIR Output folder (default: results_cpp)
+
+--------------------------------------------------------------------------------
+2. Run pip FINDER  (run_pip_finder.py)
+--------------------------------------------------------------------------------
+
+From finder_cpp/:
+
+  # All CSVs in examples/  →  results_pip/
+  python scripts/run_pip_finder.py examples -o results_pip
+
+  # Single file
+  python scripts/run_pip_finder.py examples/FGFR1_MCF7_AF647_1.csv -o results_pip
+
+Outputs (one per input):
+  results_pip/<stem>_pip_clusters.csv     columns: x, y, cluster
+  results_pip/total_time.txt              end-to-end runtime
+
+Optional flags are the same as for run_cpp_finder.py
+(-x, -y, -o; default output folder is results_pip).
+
+Note: Both scripts use matching FINDER defaults (threshold=10,
+points_per_dimension=15, DbscanLoop, min/max threshold 5–21, decay=0.5)
+so results are comparable.
+
+--------------------------------------------------------------------------------
+3. Compare clustering results  (compare_clusters.py)
+--------------------------------------------------------------------------------
+
+Compares label partitions (ARI, AMI, NMI, Fowlkes–Mallows) and spatial
+IoU of convex-hull cluster masks. Inputs must be CSVs with columns
+x, y, cluster, and the same points in the same order.
+
+A) Two folders (recommended after steps 1–2):
+
+  python scripts/compare_clusters.py results_pip results_cpp -o comparison_summary.csv
+
+  - Matches files by base name (strips _pip_clusters / _cpp_clusters / _clusters)
+  - Prints per-file ARI and IoU
+  - Writes comparison_summary.csv with all metrics
+
+B) Two single files:
+
+  python scripts/compare_clusters.py ^
+    results_pip/FGFR1_MCF7_AF647_1_pip_clusters.csv ^
+    results_cpp/FGFR1_MCF7_AF647_1_cpp_clusters.csv
+
+  (On Linux/macOS use \ for line continuation instead of ^)
+
+  - Prints metrics to the terminal only (no CSV written)
+
+Optional:
+  --mask-dim N     IoU raster size N x N over the data bounding box
+                   (default: 2400)
+
+--------------------------------------------------------------------------------
+4. Suggested end-to-end check
+--------------------------------------------------------------------------------
+
+From finder_cpp/:
+
+  python scripts/run_cpp_finder.py examples -o results_cpp
+  python scripts/run_pip_finder.py examples -o results_pip
+  python scripts/compare_clusters.py results_pip results_cpp -o comparison_summary.csv
+
+Then open comparison_summary.csv (and optionally total_time.txt in each
+results folder) to review agreement and runtime.
+
+--------------------------------------------------------------------------------
+5. Troubleshooting
+--------------------------------------------------------------------------------
+
+- "Failed to import finder_cpp"
+    Rebuild:  pip install -e . --no-build-isolation   (from finder_cpp/)
+
+- "Failed to import finder (finder_smlm)"
+    Install:  pip install finder_smlm
+
+- "no CSV files found" / "input not found"
+    Run commands from finder_cpp/, or pass absolute/relative paths to
+    examples/ and output folders.
+
+- "x/y coordinates differ" / length mismatch in compare_clusters
+    Both result CSVs must come from the same input points in the same order.
+    Re-run both FINDER scripts on the same examples/ files.
+
+================================================================================

@@ -101,3 +101,4 @@ examples/output/
 *.bak
 *.swp
 *~
+examples/*.csv

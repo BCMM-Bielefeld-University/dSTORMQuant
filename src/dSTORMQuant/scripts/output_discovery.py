@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
+import sys
 import zipfile
 from pathlib import Path
-from shutil import copyfileobj
+from shutil import copyfileobj, rmtree
 from typing import Literal, Protocol
 
 
@@ -31,12 +33,30 @@ class _LoggerLike(Protocol):
         """
 
 
+def _win_long_path(path: Path) -> str:
+    """Return a Windows path usable beyond the classic 260-character limit."""
+    resolved = str(path.resolve())
+    if sys.platform != "win32":
+        return resolved
+    if resolved.startswith("\\\\?\\"):
+        return resolved
+    if resolved.startswith("\\\\"):
+        # UNC path: \\server\share\... -> \\?\UNC\server\share\...
+        return "\\\\?\\UNC\\" + resolved.lstrip("\\")
+    return "\\\\?\\" + resolved
+
+
+def _mkdir(path: Path) -> None:
+    """Create ``path`` (and parents), supporting long paths on Windows."""
+    os.makedirs(_win_long_path(path), exist_ok=True)
+
+
 def _extract_zip_to_folder(
     zip_path: Path, target_dir: Path, logger: _LoggerLike | None = None
 ) -> bool:
     """Extract a pipeline output archive into its folder representation."""
     try:
-        target_dir.mkdir(parents=True, exist_ok=True)
+        _mkdir(target_dir)
         with zipfile.ZipFile(zip_path, "r") as zf:
             for member in zf.infolist():
                 normalized_name = member.filename.replace("\\", "/").lstrip("/")
@@ -47,11 +67,13 @@ def _extract_zip_to_folder(
 
                 destination = target_dir / normalized_name
                 if member.is_dir():
-                    destination.mkdir(parents=True, exist_ok=True)
+                    _mkdir(destination)
                     continue
 
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                with zf.open(member, "r") as src, open(destination, "wb") as dst:
+                _mkdir(destination.parent)
+                with zf.open(member, "r") as src, open(
+                    _win_long_path(destination), "wb"
+                ) as dst:
                     copyfileobj(src, dst)
         if logger:
             logger.info(f"Extracted archive: {zip_path.name} -> {target_dir.name}")
@@ -85,10 +107,16 @@ def ensure_output_folders_from_archives(
         if test_data_dir.exists() and any(test_data_dir.iterdir()):
             continue
 
-        if test_data_dir.exists() and logger:
-            logger.warning(
-                f"Found empty test_data folder for '{target_dir.name}'. Re-extracting from archive."
-            )
+        # Remove a leftover empty / partial folder from a previous failed extract
+        # (common on Windows when paths exceeded the classic 260-char limit).
+        if target_dir.exists():
+            if logger:
+                logger.warning(
+                    f"Found incomplete output folder for '{target_dir.name}'. "
+                    "Re-extracting from archive."
+                )
+            rmtree(_win_long_path(target_dir), ignore_errors=True)
+
         _extract_zip_to_folder(zip_path, target_dir, logger=logger)
 
     valid_dirs = [

@@ -39,10 +39,11 @@ def read_localization_csv(file_path: str | Path) -> pd.DataFrame:
     dtype: dict[str, str] = {}
     for col in header.columns:
         key = str(col).strip().lower()
+        # Use pandas nullable ints so missing channel/frame cells do not abort the load.
         if key in {"frameindex", "frame"}:
-            dtype[col] = "int32"
+            dtype[col] = "Int32"
         elif key in {"channelindex", "channel"}:
-            dtype[col] = "int16"
+            dtype[col] = "Int16"
         elif key in {"x (nm)", "y (nm)", "z (nm)", "x", "y", "z"}:
             dtype[col] = "float32"
         elif "(nm)" in key or "photon" in key or key in {"lp", "bg", "pvalue"}:

@@ -19,7 +19,7 @@ This file documents **provenance**, **what dSTORMQuant changed**, and **whether 
 | Per-file AIM driver       | `src/dSTORMQuant/processing/drift_correction/drift.py` |
 | Dual-channel registration | `src/dSTORMQuant/core/pipeline.py`                     |
 
-**License:** See Picasso / Jungmann Lab notice in [THRID-PARTY LICENSE.txt](./THRID-PARTY%20LICENSE.txt) and the copyright header in `AIM.py`.
+**License:** See Picasso / Jungmann Lab notice in [THRID-PARTY LICENSE.txt](./THRID-PARTY%20LICENSE.txt) §16 and the copyright header in `AIM.py`.
 
 ### What we changed
 
@@ -191,7 +191,7 @@ C++ port copyright (c) 2026 Suraj Karki, Biochemistry and Molecular Medicine —
 | scikit-learn          | Clustering implementation                       |
 | `cluster_analysis.py` | Per-channel orchestration, config, stats export |
 
-**License:** BSD 3-Clause License (scikit-learn) — see the scikit-learn distribution / project license; dependency license notices also appear under related scientific stack entries in [THRID-PARTY LICENSE.txt](./THRID-PARTY%20LICENSE.txt).
+**License:** BSD 3-Clause License (scikit-learn) — full text in [THRID-PARTY LICENSE.txt](./THRID-PARTY%20LICENSE.txt) §11.
 
 ### What we changed
 

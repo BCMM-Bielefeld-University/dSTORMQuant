@@ -48,10 +48,10 @@ echo Executable: build\Release\finder.exe
 echo.
 echo To run clustering:
 echo   cd build\Release
-echo   finder.exe input.csv output.csv [2D^|3D]
+echo   finder.exe input.csv output.csv [options]
 echo.
 echo Example:
-echo   finder.exe ..\..\examples\sample2d.csv results.csv
+echo   finder.exe ..\examples\COS7_Tubulin_AF647_nstorm.csv results.csv
 echo.
 echo For help:
 echo   finder.exe --help

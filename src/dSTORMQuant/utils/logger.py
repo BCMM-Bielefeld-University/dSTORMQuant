@@ -10,7 +10,7 @@ _logger: logging.Logger | None = None
 
 
 def setup_logger(
-    name: str = "smlm_pipeline",
+    name: str = "dstorm_pipeline",
     level: int = logging.INFO,
     log_dir: Path | None = None,
     enable_file: bool = True,

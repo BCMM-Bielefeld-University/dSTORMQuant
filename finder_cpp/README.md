@@ -96,13 +96,11 @@ cmake --build . -j
 finder_cpp/
 ├── src/                    # Implementation (finder, dbscan, bindings, CLI)
 ├── include/                # Public headers
-├── examples/               # Sample CSV + run scripts
-│   ├── sample2d.csv
-│   ├── run_finder_example.sh
-│   ├── run_finder_example.bat
-│   └── README.md
+├── examples/               # Sample localization CSVs (FGFR1 / COS7)
 ├── docs/
 │   └── CLI_USAGE.md        # Command-line reference
+├── scripts/
+│   └── RUNNING_INSTRUCTIONS.txt
 ├── third_party/nanoflann/
 ├── build.sh / build.bat    # Build scripts
 ├── CMakeLists.txt
@@ -154,19 +152,17 @@ Full CLI details: [docs/CLI_USAGE.md](docs/CLI_USAGE.md).
 
 ## Examples
 
-Small 2D sample and wrapper scripts live in `examples/`:
+Sample localization CSVs are in `examples/` (e.g. `FGFR1_MCF7_AF647_*.csv`, `COS7_Tubulin_AF647_nstorm.csv`).
 
 ```bash
 # Build first (from finder_cpp/)
 ./build.sh
 
-cd examples
-./run_finder_example.sh    # Linux / macOS
-# or
-run_finder_example.bat     # Windows
+cd build
+./finder ../examples/COS7_Tubulin_AF647_nstorm.csv results.csv
 ```
 
-See [examples/README.md](examples/README.md).
+For batch validation against the original Python FINDER, see [scripts/RUNNING_INSTRUCTIONS.txt](scripts/RUNNING_INSTRUCTIONS.txt).
 
 For the **full dSTORMQuant pipeline** (drift, filtering, colocalization), download demo data per [../README.md](../README.md#3-demo).
 

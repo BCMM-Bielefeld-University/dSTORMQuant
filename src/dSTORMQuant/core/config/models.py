@@ -426,7 +426,7 @@ class LPCalculationConfig(BaseModel):
         description="Apply EMCCD excess-noise factor 2 on variance",
     )
     bg_unit: Literal["per_nm2", "per_pixel"] = Field(
-        default="per_nm2",
+        default="per_pixel",
         description="Units of the background column",
     )
     sigma_mode: Literal["mean", "geo", "x", "y"] = Field(

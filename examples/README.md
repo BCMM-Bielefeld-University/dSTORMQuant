@@ -13,4 +13,4 @@ See the main [README](../README.md#3-demo) for copy-and-run instructions.
 
 **Header note:** Geometry/index headers (`x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`) are required. Quality headers should use NimOS-style names (`sigmaX (nm)`, `sigmaY (nm)`, `intensity (photons)`, `localization precision (nm)`, `p-value`). If a quality column is missing or still under another tool’s name, that filter step is **skipped** (warning + `filtering_report.json`); the run continues. Rename ThunderSTORM demos (COS7/Slp76) to apply those filters.
 
-**3D / z:** The current release rejects files whose `z (nm)` column has numeric values. `AHA_24022…` includes z with values—clear or remove that column for a 2D demo run.
+**3D / z:** The current release supports 2D data only. A `z (nm)` column that is entirely zero is dropped with a warning. Non-zero axial values abort the run. The AHA demo CSV uses an all-zero `z (nm)` column and is fine for a 2D demo as shipped.

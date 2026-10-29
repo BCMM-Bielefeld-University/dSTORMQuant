@@ -292,8 +292,9 @@ workflow if needed.
 
 ## License
 
-This project is released under the [MIT License](LICENSE). By contributing,
-you agree that your contributions will be licensed under the same terms.
+This project is released under the [GNU General Public License v3.0](LICENSE).
+By contributing, you agree that your contributions will be licensed under the
+same terms.
 
 Parts of the FINDER C++ components may carry additional notices; see
 `finder_cpp/` and [THRID-PARTY LICENSE.txt](THRID-PARTY%20LICENSE.txt) when

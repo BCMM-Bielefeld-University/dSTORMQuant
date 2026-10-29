@@ -96,7 +96,7 @@ drift_correction:
 
   # Drift validation and replacement parameters
   drift_validation:
-    use: false                        # Enable detection and replacement of unrealistic drift values
+    use: true                        # Enable detection and replacement of unrealistic drift values
     max_segment_drift_nm: 35.0          # Maximum allowed drift per segment in nanometers
     n_previous_segments: 10             # Number of previous valid segments to average for replacement
 

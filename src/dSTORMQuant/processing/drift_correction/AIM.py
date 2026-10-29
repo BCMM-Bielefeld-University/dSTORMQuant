@@ -1211,7 +1211,7 @@ def csv2hdf(path, pixelsize, sanity_config=None, passthrough_columns=None):
         Exception: Re-raised when required columns cannot be parsed.
     """
     data = read_localization_csv(path)
-    # Abort if z has numeric values; drop empty axial columns (2D release).
+    # Abort if z has non-zero values; drop empty/all-zero axial columns (2D release).
     data = finalize_loaded_dataframe(
         data,
         context=f"CSV→HDF conversion of '{_ospath.basename(str(path))}'",

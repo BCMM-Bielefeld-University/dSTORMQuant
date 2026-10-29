@@ -28,7 +28,7 @@ dSTORMQuant is a comprehensive, modular Python tool for processing, filtering, d
 
 ### Documentation
 
-- A complete documentation of the project can be found inside the `docs/` directory.
+- User guide and supplementary materials are in the [`docs/`](docs/) directory (PDF / DOCX; not a Sphinx site).
 - Contribution guide: [CONTRIBUTION.md](CONTRIBUTION.md)
 - Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Third-party algorithms and adaptations: [ATTRIBUTION.md](ATTRIBUTION.md)
@@ -156,7 +156,7 @@ End-to-end correctness on real SMLM data is still validated manually using the p
 
 ### Next Steps
 - 📺 [Demo](#3-demo)
-- 📖 [User Guide](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/blob/main/docs/Supplementary%20Materials%20User%20Guide%20Karki%20et%20al..pdf)
+- 📖 [User Guide](https://github.com/BCMM-Bielefeld-University/dSTORMQuant/blob/main/docs/Supplementary%20Materials%20User%20Guide%20Karki%20et%20al.pdf)
 
 ---
 
@@ -165,8 +165,11 @@ End-to-end correctness on real SMLM data is still validated manually using the p
 ```
 dSTORMQuant/                     # project root
 ├── .gitignore
+├── ATTRIBUTION.md               # Upstream algorithm provenance
+├── CHANGELOG.md
 ├── CONTRIBUTION.md
-├── LICENSE
+├── LICENSE                      # GPL-3.0
+├── THRID-PARTY LICENSE.txt      # Third-party license texts
 ├── .pre-commit-config.yaml       # Pre-commit hooks
 ├── .github/
 │   └── workflows/
@@ -180,19 +183,24 @@ dSTORMQuant/                     # project root
 │   ├── output/                  # Results (created on run; gitignored)
 │   └── temp/                    # Scratch (created on run; gitignored)
 ├── docs/
-│   └── Supplementary Materials User Guide Karki et al..pdf  # User guide and documentation
+│   └── Supplementary Materials User Guide Karki et al.pdf  # User guide
+├── examples/
+│   └── README.md                # Demo file descriptions (CSVs via examples.zip)
 ├── finder_cpp/                  # C++ FINDER clustering implementation
 │   ├── src/                     # C++ source and bindings
 │   │   ├── main.cpp, finder.cpp, dbscan.cpp, dbscan_loop.cpp
 │   │   ├── similarity_score.cpp, auxiliary_functions.cpp
 │   │   └── finder_bindings.cpp  # Python bindings
 │   ├── include/                 # Header files
-│   ├── examples/                # Example scripts and sample data
+│   ├── examples/                # Sample localization CSVs for FINDER CLI
 │   ├── docs/                    # FINDER-specific docs
 │   ├── third_party/             # e.g. nanoflann
 │   ├── CMakeLists.txt
 │   ├── build.sh / build.bat
 │   └── pyproject.toml / setup.py
+├── scripts/                     # AIM backend comparison / evaluation helpers
+│   ├── dataset/                 # Prepared AIM evaluation CSVs
+│   └── RUNNING_INSTRUCTIONS.txt
 ├── src/dSTORMQuant/
 │   ├── main.py                  # Main pipeline entry point
 │   ├── core/                    # Pipeline and config
@@ -265,16 +273,16 @@ Download `**examples.zip**` from the link above (replace the URL when your host 
 
 The repository already includes `data/input/` and `data/metadata/`. The archive contains an `examples/` folder with the three CSVs and the metadata workbook.
 
-1. Extract `examples.zip` in the project root (`dSTORMQuant/`). You should get `dSTORMQuant/examples/` with four files inside.
+1. Extract `examples.zip` in the project root (`dSTORMQuant/`). You should get the four demo files under `dSTORMQuant/examples/` (alongside the repository `examples/README.md` if present).
 2. Move the files into `data/`:
   - All three `.csv` files → `data/input/`
   - `SMLM Data_Input.xlsx` → `data/metadata/`
-3. You can delete the empty `examples/` folder afterward (it is only from the ZIP, not part of the pipeline).
+3. Keep the repository `examples/` folder (it contains `examples/README.md`). Do not remove that directory after the demo setup.
 
 **Windows (File Explorer)**
 
 1. Right-click `examples.zip` in `dSTORMQuant` → **Extract All…** → extract to `dSTORMQuant`.
-2. Open the new `examples` folder, select the three `.csv` files, **Cut**, open `data\input`, **Paste**.
+2. Open the `examples` folder, select the three `.csv` files, **Cut**, open `data\input`, **Paste**.
 3. Cut `SMLM Data_Input.xlsx` from `examples`, paste into `data\metadata`.
 
 **macOS / Linux (terminal, from project root)**
@@ -283,7 +291,6 @@ The repository already includes `data/input/` and `data/metadata/`. The archive 
 unzip -o examples.zip
 mv examples/*.csv data/input/
 mv examples/"SMLM Data_Input.xlsx" data/metadata/
-rmdir examples
 ```
 
 **Verify:**
@@ -368,7 +375,7 @@ All pipeline options are set in `config/config.yaml`. Here is a summary of the m
 
 ### **data**
 
-- `input.file_format`: Format of your input data (e.g., `csv`). Supports CSV format.
+- `input.file_format`: Must be `csv`. CSV is the only supported user input format.
 - `input.required_columns`: Exact headers validated on **load** (default: `x (nm)`, `y (nm)`, `channelIndex`, `frameIndex`). Missing any of these **aborts that file**. Axial `z (nm)` with **non-zero** values **aborts** (3D not supported); an empty or all-zero z column is dropped with a warning. `channelName` is dropped if present.
 - `input.optional_quality_columns`: Documented NimOS-style quality headers listed in `config.yaml` so you know which names to provide or rename to **before** a run (default: `background (photons/nm^2)`, `sigmaX (nm)`, `sigmaY (nm)`, `intensity (photons)`, `localization precision (nm)`, `p-value`). These are **not** required at load; if absent, the matching filter is **skipped**—see **filtering** and **`filtering_report.json`**. The p-value filter also accepts the alternate header `pvalue`.
 - After each run, **`filtering_report.json`** in `test_data/` lists which filter steps were applied or skipped.
@@ -488,13 +495,14 @@ After the pipeline has run, you can use these CLI commands from the project root
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `merge-csv`                  | Merge CSV outputs from multiple experiments into `data/output/merged_channel_data/` by cell line and channel |
 | `save-napari-visualizations` | Batch-save Napari views as images into each experiment’s `test_images/` folder                               |
+| `visualization-steps`        | Interactive menu to open selected pipeline-stage localisations in Napari for an existing experiment output  |
 
 
-Install the package first (`pip install -e .`). If a command is not found, use e.g. `python -m dSTORMQuant.scripts.merge_csv`.
+Install the package first (`pip install -e .`). If a command is not found, use e.g. `python -m dSTORMQuant.scripts.merge_csv` or `python -m dSTORMQuant.scripts.visualize_steps`.
 
 Important: ensure the corresponding output folder (for example `data/output/<experiment_name>/test_data`) exists before running post-analysis scripts.
 
-**Note:** Earlier versions exposed `visualization-steps` and `roi-clusters` commands, which are no longer available in the current release.
+**Note:** Earlier versions also exposed a `roi-clusters` command, which is no longer available in the current release.
 
 ---
 
@@ -519,7 +527,7 @@ This repository includes a GitHub Actions workflow at `.github/workflows/ci-cd.y
 
 The pipeline executes the following steps sequentially:
 
-1. **Data Loading**: Reads localization data (HDF5, CSV, or other supported formats)
+1. **Data Loading**: Reads localization data from CSV files (the only supported user input format)
 2. **Initial Visualization**: Creates baseline visualizations
 3. **Drift Correction**: Applies AIM drift correction algorithm
 4. **Filtering**: Removes low-quality localizations based on configurable thresholds
@@ -536,7 +544,7 @@ The pipeline executes the following steps sequentially:
 
 The pipeline creates a subdirectory in `data/output/` for each experiment (named after the input file base name). Within each experiment folder:
 
-- **test_data/**: Processed data files (CSV, HDF5) after each major step (e.g., filtered, clustered, colocalized).
+- **test_data/**: Processed localization CSVs after each major step (e.g., filtered, clustered, colocalized). Intermediate HDF5 may appear during AIM drift correction but is not a user input format.
 - **test_images/**: Generated visualizations (PNG images, Napari screenshots, histograms, plots).
 
 Examples of processing steps reflected in outputs:

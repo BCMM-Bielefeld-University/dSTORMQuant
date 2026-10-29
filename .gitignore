@@ -209,3 +209,7 @@ data/metadata/*
 !data/metadata/.gitkeep
 data/output/
 data/temp/
+scripts/dataset/*.csv
+scripts/dataset/*.mat
+examples/*.csv
+examples/*.xlsx

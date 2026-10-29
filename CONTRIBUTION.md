@@ -81,7 +81,7 @@ behavior or parameters change.
 
 Ready to contribute? Here's how to set up `dSTORMQuant` for local development.
 
-**Requirements:** Python 3.10.12+, a C++ compiler (for the FINDER extension),
+**Requirements:** Python 3.10+, a C++ compiler (for the FINDER extension),
 and `pip`.
 
 1. Fork the `dSTORMQuant` repo on GitHub.
@@ -250,8 +250,8 @@ Pull requests and pushes to `main` / `master` run
 - Build artifacts for the main package and `finder_cpp`
 - On version tags (`v*`), create a GitHub Release with built artifacts
 
-CI currently targets Python 3.12. Local development should work with Python
-3.10.12+.
+Supported Python versions match `requires-python` in `pyproject.toml`
+(Python 3.10+). CI currently runs on Python 3.12.
 
 ## Maintenance and Roadmap
 

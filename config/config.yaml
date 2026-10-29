@@ -25,7 +25,7 @@ data:
       - "intensity (photons)"
       - "localization precision (nm)"
       - "p-value"
-    xlsx_filename: "dSTORM Data_Input.xlsx"  # Metadata Excel file in data/metadata/
+    xlsx_filename: "SMLM Data_Input.xlsx"  # Metadata Excel file in data/metadata/
     skip_frames: 200  # Number of frames to skip at the start of each channel's frame range
 
     # Column names in the metadata Excel

@@ -64,6 +64,10 @@ dSTORMQuant is a comprehensive, modular Python tool for processing, filtering, d
   ```powershell
    .\.venv\Scripts\Activate.ps1
   ```
+  **Windows (CMD):**
+  ```cmd
+   .\.venv\Scripts\activate
+  ```
    **Linux / macOS:**
   ```bash
    source .venv/bin/activate
@@ -232,7 +236,7 @@ Download `examples.zip` and place the contents in `data/input/` and `data/metada
 | `AHA_24022_U2OS-WT_AST0126_AST0063-2_posXY1_channels_t0_posZ0.csv` | `data/input/`    | Dual-channel U2OS WT data (NimOS). Acquired by Anne Sophie Hammann, Biochemistry and Molecular Medicine, Medical School OWL, Bielefeld University.                |
 | `COS7_Tubulin_AF647_nstorm.csv`                                    | `data/input/`    | Single-channel COS7 tubulin ([dataset 233](https://nano-org.bham.ac.uk/upload/dataset/233/)). ThunderSTORM; Dr. Sandeep Shirgrill, University of Birmingham.      |
 | `Slp76_259722AM_Slp76_PLL_5min_Cell-2_detections_dc.csv`           | `data/input/`    | Single-channel Jurkat E6.1 Slp76 ([dataset 276](https://nano-org.bham.ac.uk/upload/dataset/276/)). ThunderSTORM; Dr. Sandeep Shirgrill, University of Birmingham. |
-| `dSTORM Data_Input.xlsx`                                           | `data/metadata/` | Metadata for all three experiments (`file_name`, channel indices, frame ranges).                                                                                  |
+| `SMLM Data_Input.xlsx`                                           | `data/metadata/` | Metadata for all three experiments (`file_name`, channel indices, frame ranges).                                                                                  |
 
 
 The metadata sheet lists frame ranges and channel indices for each file. `AHA_24022` is dual-channel; **COS7** and **Slp76** are single-channel rows (second channel columns left empty).
@@ -244,7 +248,7 @@ examples/
   AHA_24022_U2OS-WT_AST0126_AST0063-2_posXY1_channels_t0_posZ0.csv
   COS7_Tubulin_AF647_nstorm.csv
   Slp76_259722AM_Slp76_PLL_5min_Cell-2_detections_dc.csv
-  dSTORM Data_Input.xlsx
+  SMLM Data_Input.xlsx
 ```
 
 After extracting, move files from the `examples/` folder into the pipeline folders already in the repo (`data/input/` and `data/metadata/`).
@@ -264,28 +268,28 @@ The repository already includes `data/input/` and `data/metadata/`. The archive 
 1. Extract `examples.zip` in the project root (`dSTORMQuant/`). You should get `dSTORMQuant/examples/` with four files inside.
 2. Move the files into `data/`:
   - All three `.csv` files → `data/input/`
-  - `dSTORM Data_Input.xlsx` → `data/metadata/`
+  - `SMLM Data_Input.xlsx` → `data/metadata/`
 3. You can delete the empty `examples/` folder afterward (it is only from the ZIP, not part of the pipeline).
 
 **Windows (File Explorer)**
 
 1. Right-click `examples.zip` in `dSTORMQuant` → **Extract All…** → extract to `dSTORMQuant`.
 2. Open the new `examples` folder, select the three `.csv` files, **Cut**, open `data\input`, **Paste**.
-3. Cut `dSTORM Data_Input.xlsx` from `examples`, paste into `data\metadata`.
+3. Cut `SMLM Data_Input.xlsx` from `examples`, paste into `data\metadata`.
 
 **macOS / Linux (terminal, from project root)**
 
 ```bash
 unzip -o examples.zip
 mv examples/*.csv data/input/
-mv examples/"dSTORM Data_Input.xlsx" data/metadata/
+mv examples/"SMLM Data_Input.xlsx" data/metadata/
 rmdir examples
 ```
 
 **Verify:**
 
 - `data/input/` contains the three CSV files  
-- `data/metadata/` contains `dSTORM Data_Input.xlsx`
+- `data/metadata/` contains `SMLM Data_Input.xlsx`
 
 #### Step 3 — Check configuration
 
@@ -294,7 +298,7 @@ rmdir examples
 3. Confirm this line is present (only change it if your metadata file has a different name):
 
 ```yaml
-xlsx_filename: "dSTORM Data_Input.xlsx"
+xlsx_filename: "SMLM Data_Input.xlsx"
 ```
 
 1. Save the file if you edited it.

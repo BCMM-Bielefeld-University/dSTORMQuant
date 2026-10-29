@@ -13,17 +13,19 @@ name = "dSTORMQuant"
 version = "0.0.1"
 description = "dSTORMQuant - Super-Resolution Microscopy (SMLM) Analysis Tool - Universität Bielefeld"
 readme = "README.md"
-requires-python = ">=3.10.12"
+requires-python = ">=3.10"
 authors = [
     {name = "Suraj Karki", email = "suraj.karki500@gmail.com"}
 ]
-license = {text = "MIT"}
+license = {text = "GPL-3.0-only"}
 keywords = ["microscopy", "smlm", "super-resolution", "research", "image-analysis"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Topic :: Scientific/Engineering :: Image Processing",

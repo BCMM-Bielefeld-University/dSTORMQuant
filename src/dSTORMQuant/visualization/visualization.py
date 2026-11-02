@@ -358,7 +358,14 @@ def save_napari_points_screenshot(
 
     viewer = napari.Viewer(show=True)
     viewer.scale_bar.visible = True
-    viewer.scale_bar.unit = "nm"
+    # Set scale-bar unit
+    for lyr in viewer.layers:
+        if hasattr(lyr, "units"):
+            # newer napari: units live on the layer
+            lyr.units = ("nm",) * lyr.ndim
+        else:
+            # older napari: units live on the scale bar
+            viewer.scale_bar.unit = "nm"
     viewer.scale_bar.position = "bottom_right"
 
     # Collect coordinates and legend info

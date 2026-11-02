@@ -25,9 +25,9 @@ plt.rcParams["svg.fonttype"] = "none"
 def _napari_points_style(face_color) -> dict:
     """Keyword args for Napari points layers without visible marker borders.
 
-    Napari defaults are ``border_color='dimgray'`` and ``border_width_is_relative=True``.
-    Passing only ``border_width=0`` is not reliable on all platforms (Linux vs Windows,
-    VisPy/OpenGL); borders can still render as a gray halo around dense SMLM data.
+    Napari defaults are border_color='dimgray' and border_width_is_relative=True.
+    Passing only border_width=0  is not reliable on all platforms (Linux vs Windows,
+    VisPy/OpenGL), borders can still render as a gray halo around dense SMLM data.
 
     Args:
         face_color: Point fill color (hex string, name, or per-point color sequence).
@@ -42,6 +42,39 @@ def _napari_points_style(face_color) -> dict:
         "border_color": face_color,
         "symbol": "disc",
     }
+
+
+def _set_scale_bar_unit(viewer, unit: str = "nm") -> None:
+    """Set the scale-bar unit for both old and new napari versions.
+
+    In newer napari (>= 0.7) the scale bar unit is derived from Layer.units
+    and ScaleBarOverlay.unit is deprecated / removed. In older napari the unit
+    is set directly on the scale bar.
+
+    IMPORTANT: call this AFTER the layers have been added to the viewer, because
+    the unit is stored on the layers in newer napari.
+
+    Args:
+        viewer: The :class:`napari.Viewer` instance.
+        unit: Unit string, e.g. ``"nm"``.
+
+    Returns:
+        None
+    """
+    layers = list(viewer.layers)
+    if layers and hasattr(layers[0], "units"):
+        # Newer napari: units live on the layers
+        for lyr in layers:
+            try:
+                lyr.units = (unit,) * lyr.ndim
+            except Exception as e:  # pragma: no cover - defensive
+                logger.debug(f"Could not set units on layer {lyr.name!r}: {e}")
+    else:
+        # Older napari: unit lives on the scale bar
+        try:
+            viewer.scale_bar.unit = unit
+        except Exception as e:  # pragma: no cover - defensive
+            logger.debug(f"Could not set scale bar unit: {e}")
 
 
 ############# Filtering Analysis Visualization ##############
@@ -299,7 +332,6 @@ def visualize_napari(
 
     viewer = napari.Viewer()
     viewer.scale_bar.visible = True
-    viewer.scale_bar.unit = "nm"
 
     for _, (color, label, ch_index) in channels.items():
         coords = filter_by_channel(df, ch_index, columns=["y", "x"]).to_numpy()
@@ -314,6 +346,9 @@ def visualize_napari(
             logger.warning(
                 f"Channel {label} has no localizations, skipping visualization."
             )
+
+    # Set scale-bar unit AFTER the layers exist (works for old and new napari)
+    _set_scale_bar_unit(viewer, "nm")
 
     napari.run()
 
@@ -358,14 +393,6 @@ def save_napari_points_screenshot(
 
     viewer = napari.Viewer(show=True)
     viewer.scale_bar.visible = True
-    # Set scale-bar unit
-    for lyr in viewer.layers:
-        if hasattr(lyr, "units"):
-            # newer napari: units live on the layer
-            lyr.units = ("nm",) * lyr.ndim
-        else:
-            # older napari: units live on the scale bar
-            viewer.scale_bar.unit = "nm"
     viewer.scale_bar.position = "bottom_right"
 
     # Collect coordinates and legend info
@@ -380,6 +407,9 @@ def save_napari_points_screenshot(
                 **_napari_points_style(color),
             )
         legend_texts.append((label, len(coords), color))
+
+    # Set scale-bar unit AFTER the layers exist (works for old and new napari)
+    _set_scale_bar_unit(viewer, "nm")
 
     viewer.reset_view()
 
@@ -1243,7 +1273,6 @@ def visualize_clusters(
 
     viewer = napari.Viewer()
     viewer.scale_bar.visible = True
-    viewer.scale_bar.unit = "nm"
 
     # Map channel index to label
     index_to_label = {v[2]: v[1] for v in channels.values()}
@@ -1267,6 +1296,9 @@ def visualize_clusters(
             name=layer_name,
             **_napari_points_style(point_colors),
         )
+
+    # Set scale-bar unit AFTER the layers exist (works for old and new napari)
+    _set_scale_bar_unit(viewer, "nm")
 
     # Save combined view
     combined_path = os.path.join(save_dir, "clusters_napari_view.png")

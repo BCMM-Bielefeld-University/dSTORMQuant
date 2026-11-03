@@ -267,7 +267,7 @@ Complete [installation](#1-prerequisites--installation) first.
 
 #### Step 1 — Download `examples.zip`
 
-Download `**examples.zip**` from the link above (replace the URL when your host is ready). Save it in the project root (`dSTORMQuant/`) or your Downloads folder.
+Download `**examples.zip**` from the link above. Save it in the project root (`dSTORMQuant/`) or your Downloads folder.
 
 #### Step 2 — Extract and move files into `data/`
 

@@ -140,12 +140,6 @@ Automated unit tests under `tests/` and are run in CI.
 - Nearest-neighbor distance helpers
 - Small utility helpers (metadata header normalization, channel label parsing)
 
-**Not yet automated**
-
-- Full end-to-end pipeline runs on large demo datasets
-- Napari / GUI visualization paths
-- FINDER C++ numerical regression suites beyond the package build step
-
 **Run locally** (after `pip install -e ".[dev]"` or `pip install -e ".[test]"`):
 
 ```bash

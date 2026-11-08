@@ -10,6 +10,7 @@ Location:  finder_cpp/scripts/
 Example inputs:  finder_cpp/examples/*.csv
   (columns include x, y; scripts default to -x x -y y)
 
+You can download the dataset (Example_data_for_FINDER_clustering_validation.zip) from this zenodo link: https://doi.org/10.5281/zenodo.23590641
 --------------------------------------------------------------------------------
 0. Prerequisites
 --------------------------------------------------------------------------------
